@@ -132,3 +132,4 @@ tmp
 *.idx
 *.out
 *.pdf
+.directory
