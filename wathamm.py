@@ -45,10 +45,12 @@ def shifted(cffs,shift):
 def eq1(*grid_base):
     in_pts = nodes(*grid_base)
 
-    dpdx = mvmonoss(in_pts, powers(3, 2), 0, cff_cnt, [1, 0])
-    dvdt = mvmonoss(in_pts, powers(3, 2), 1, cff_cnt, [0, 1])
+    dpdx = mvmonoss(in_pts, powers(max_poly_degree, 2), 0, cff_cnt, [0, 1])
 
-    monos = dpdx + rho*dvdt
+    v = mvmonoss(in_pts, powers(max_poly_degree, 2), 1, cff_cnt, [0, 0])
+    dvdt = mvmonoss(in_pts, powers(max_poly_degree, 2), 1, cff_cnt, [1, 0])
+
+    monos = dpdx + rho*(dvdt + 0.0001*0.00558*v/(2*d))
 
     rhs = np.full(len(monos), 0)
     cff = np.full(len(monos), 1)
@@ -57,35 +59,34 @@ def eq1(*grid_base):
 def eq2(*grid_base):
     in_pts = nodes(*grid_base)
 
-    dpdt = mvmonoss(in_pts, powers(3, 2), 0, cff_cnt, [0, 1])
-    dvdx = mvmonoss(in_pts, powers(3, 2), 1, cff_cnt, [1, 0])
+    dpdt = mvmonoss(in_pts, powers(max_poly_degree, 2), 0, cff_cnt, [1, 0])
+    dvdx = mvmonoss(in_pts, powers(max_poly_degree, 2), 1, cff_cnt, [0, 1])
 
     
     monos = dpdt - c2*rho*dvdx
 
     rhs = np.full(len(monos), 0)
-    cff = np.full(len(monos), 1)
+    cff = np.full(len(monos), 1000)
     return monos, rhs, cff
 
-def boundary_val(val, ind, *grid_base):
+def boundary_val(val,eps, ind, *grid_base):
     """
     Boundary points
     """
     sb_pts_x0 = nodes(*grid_base)
     monos = mvmonoss(sb_pts_x0, powers(3, 2), ind, cff_cnt)
     rhs = np.full(len(monos), val)
-    cff = np.full(len(monos), 1)
+    cff = np.full(len(monos), eps)
     return monos, rhs, cff
 
-def boundary_fnc(fnc, ind, *grid_base):
+def boundary_fnc(fnc,eps, ind, *grid_base):
     """
     Boundary points
     """
     sb_pts_x0 = nodes(*grid_base)
     monos = mvmonoss(sb_pts_x0, powers(3, 2), ind, cff_cnt)
     rhs = np.apply_along_axis(fnc, 1, sb_pts_x0)
-    # print(rhs)
-    cff = np.full(len(monos), 1)
+    cff = np.full(len(monos), eps)
     return monos, rhs, cff
 
 
@@ -119,24 +120,34 @@ for i in range(treg):
 
 def vs(pts):
     t,x = pts
-    if t < timeclose:
-        return v0*(timeclose - t)
+    if t < 1: return v0
+    if  1- 0.01* t > 0.9:
+        return 1 - 0.01* t
     else:
-        return 0
+        return 0.9
 
 
 for i in range(treg):    
-    m,r,c = boundary_fnc(vs, 1, T_part[i],X_part[xreg - 1][-1])
+    m,r,c = boundary_fnc(vs,1, 1, T_part[i],X_part[xreg - 1][-1])
+    # m,r,c = boundary_val(v0,0.01, 1, T_part[i],X_part[xreg - 1][-1])
     ind = make_id(i, 0)
-    m = shifted(m, ind)
+    # m = shifted(m, ind)
     monos.append(m)
     rhs.append(r)
     cff.append(c)
 
 for j in range(xreg):
-    m,r,c = boundary_val(p0, 0, T_part[0][0], X_part[i])
+    m,r,c = boundary_val(p0,1, 0, T_part[0][0], X_part[j])
     ind = make_id(0, j)
-    m = shifted(m, ind)
+    # m = shifted(m, ind)
+    monos.append(m)
+    rhs.append(r)
+    cff.append(c)
+
+for j in range(xreg):
+    m,r,c = boundary_val(v0,1, 1, T_part[0][0], X_part[j])
+    ind = make_id(0, j)
+    # m = shifted(m, ind)
     monos.append(m)
     rhs.append(r)
     cff.append(c)
@@ -224,11 +235,13 @@ cff = np.hstack(cff).reshape(-1, 1)
 
 s = CyClpSimplex()
 lp_dim = A.shape[1] + 1
-
+# A /= cff
+# ones = np.ones_like(cff)
 A1 = np.hstack([A, cff])
 A2 = np.hstack([-A, cff])
 
 x = s.addVariable('x', lp_dim)
+
 A1 = np.matrix(A1)
 A2 = np.matrix(A2)
 nnz = np.count_nonzero(A1)+np.count_nonzero(A2)
@@ -255,3 +268,5 @@ s.primal()
 outx = s.primalVariableSolution['x']
 pc = sc.split(outx[:-1],max_reg)
 np.savetxt("test_cff", pc)
+
+
