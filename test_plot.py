@@ -2,9 +2,12 @@ import numpy as np
 import scipy as sc
 from cylp.cy import CyClpSimplex
 from cylp.py.modeling.CyLPModel import CyLPArray
+from poly import mvmonos, powers
+
+from mpl_toolkits.mplot3d import axes3d
+
 import matplotlib.pyplot as plt
 
-from poly import mvmonos, powers
 
 
 from constants import *
@@ -18,8 +21,8 @@ p_cf = pc[s:f]
 s,f = s+cff_cnt[0],f+cff_cnt[1]
 v_cf = pc[s:f]
 
-X = sc.linspace(0, length, totalx*3)
-T = sc.linspace(0, time, totalt*3)
+X = sc.linspace(0, length, totalx)
+T = sc.linspace(0, time, totalt)
 
 
 #pressure
@@ -50,47 +53,20 @@ dvdx = mvmonos(in_pts_cr, powers(max_poly_degree, 2), [0, 1])
 udvdx = dvdx.dot(v_cf)
 
 
-# plt.plot(xx[:,0],pp[0,:])
+# fig = plt.figure()
+# ax = fig.add_subplot(projection='3d')
 
-# plt.plot(xx[:,0],pp[-1,:])
+# ax.plot_wireframe(T,X,pp)
 
-plt.plot(xx[:,0],vv[0,:])
+fig = plt.figure()
+ax = fig.add_subplot(projection='3d')
 
-plt.plot(xx[:,0],vv[-1,:])
+# Grab some test data.
+X, Y, Z = axes3d.get_test_data(0.05)
 
-print (pp)
-print (vv)
+# Plot a basic wireframe.
+ax.plot_wireframe(X, Y, Z, rstride=10, cstride=10)
 
-# plt.plot(tt[0,:],vv[:, 0])
+plt.show()
 
-# plt.plot(tt[0,:],vv[:,-1])
-
-# plt.plot(tt[0,:],pp[:,100])
-
-# print(min(pp[:,-1]), max(pp[:,-1]))
-
-# plt.plot(tt[0,:],pp[:,-1])
-
-
-print (vv[0,0])
-
-print(max(udpdx), min(udpdx))
-rbnd = rho*(udvdt - 0.01*uv/(2*d))
-print(max(rbnd), min(rbnd))
-
-print(max(udpdt), min(udpdt))
-rbnd = c2*rho*udvdx
-print(max(rbnd), min(rbnd))
-
-# np.savetxt("out",np.vstack([udpdx,rho*(udvdt + 1*uv/(2*d))]).reshape(-1,2))
-
-
-# print(uu)
-# plt.plot(xx[:,0],uu[0,:])
-
-# fig, ax = plt.subplots()
-# p = ax.contourf(tt, xx, uu, np.linspace(700, 1900, 100), cmap='inferno')
-
-# fig.colorbar(p, ax=ax)
-# fig.tight_layout()
 plt.show()
