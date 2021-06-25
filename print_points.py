@@ -76,19 +76,17 @@ data = {
 
 df = pd.DataFrame(data)
 df.set_index("T")
-odf = df[df.X==X[6]]
-#odf.plot(x="T",y=["v"])
 
-# pdata= {
-#         "T": T,
-#         "p1":df[df.X==X[0]]["p"].to_numpy(),
-#         "p2":df[df.X==X[65]]["p"].to_numpy(),
-#         "p3":df[df.X==X[70]]["p"].to_numpy(),
-#         "p4":df[df.X==X[-1]]["p"].to_numpy(),
-#         }
+pdata= {
+        "T": T,
+        "p1":df[df.X==X[0]]["p"].to_numpy(),
+        "p2":df[df.X==X[65]]["p"].to_numpy(),
+        "p3":df[df.X==X[70]]["p"].to_numpy(),
+        "p4":df[df.X==X[-1]]["p"].to_numpy(),
+        }
 
-# pdf = pd.DataFrame(pdata)           
-# pdf.plot(x="T",y=["p1","p2","p3","p4"])
+pdf = pd.DataFrame(pdata)           
+pdf.plot(x="T",y=["p1","p2","p3","p4"])
 
 
 pdata= {
@@ -99,8 +97,8 @@ pdata= {
         "v4":df[df.X==X[-1]]["v"].to_numpy(),
         }
 
-pdf = pd.DataFrame(pdata)           
-pdf.plot(x="T",y=["v1","v2","v3","v4"])
+odf = pd.DataFrame(pdata)           
+odf.plot(x="T",y=["v1","v2","v3","v4"])
 
      
 plt.show()

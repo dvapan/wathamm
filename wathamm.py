@@ -54,10 +54,10 @@ def eq1(*grid_base):
     v = mvmonoss(in_pts, ppwrs, 1, cff_cnt, [0, 0])
     dvdt = mvmonoss(in_pts, ppwrs, 1, cff_cnt, [1, 0])
 
-    monos = dpdx + rho*(dvdt + lmd*v/(2*d))/10**6
+    monos = dpdx + rho*(dvdt + lmd*v/(2*d))
 
     rhs = np.full(len(monos), 0)
-    cff = np.full(len(monos), 0.01)
+    cff = np.full(len(monos), 1)
     return monos, rhs, cff
 
 def eq2(*grid_base):
@@ -67,7 +67,7 @@ def eq2(*grid_base):
     dvdx = mvmonoss(in_pts, ppwrs, 1, cff_cnt, [0, 1])
 
     
-    monos = dpdt - c2*rho*dvdx/10**6
+    monos = dpdt - c2*rho*dvdx
 
     rhs = np.full(len(monos), 0)
     cff = np.full(len(monos), 100)
@@ -132,8 +132,8 @@ def vs(pts):
 
 
 for i in range(treg):    
-    m,r,c = boundary_fnc(vs,0.01, 1, T_part[i],X_part[xreg - 1][-1])
-    # m,r,c = boundary_val(v0,0.01, 1, T_part[i],X_part[xreg - 1][-1])
+    # m,r,c = boundary_fnc(vs,0.01, 1, T_part[i],X_part[xreg - 1][-1])
+    m,r,c = boundary_val(v0,0.01, 1, T_part[i],X_part[xreg - 1][-1])
     ind = make_id(i, 0)
     # m = shifted(m, ind)
     monos.append(m)
@@ -141,7 +141,7 @@ for i in range(treg):
     cff.append(c)
 
 for j in range(xreg):
-    m,r,c = boundary_val(p0,100, 0, T_part[0][0], X_part[j])
+    m,r,c = boundary_val(p0,1000, 0, T_part[0][0], X_part[j])
     ind = make_id(0, j)
     # m = shifted(m, ind)
     monos.append(m)
@@ -239,7 +239,7 @@ cff = np.hstack(cff).reshape(-1, 1)
 
 s = CyClpSimplex()
 
-s.logLevel = 4
+s.logLevel = 1
 
 lp_dim = A.shape[1] + 1
 # A /= cff
@@ -267,7 +267,7 @@ s += A1 * x >= b1
 s += A2 * x >= b2
 
 s += x[lp_dim - 1] >= 0
-s += x[lp_dim - 1] <= 1
+# s += x[lp_dim - 1] <= 1
 s.objective = x[lp_dim - 1]
 
 print ("TASK SIZE:")
