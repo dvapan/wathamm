@@ -126,6 +126,7 @@ prb
 tmp
 *.c
 
+*.bak
 *.aux
 *.bbl
 *.blg
@@ -133,3 +134,5 @@ tmp
 *.out
 *.pdf
 .directory
+
+test_cff*
