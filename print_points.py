@@ -11,6 +11,11 @@ from constants import *
 
 import matplotlib.pyplot as plt
 
+from wathamm import boundary_fnc
+
+from wathamm import eq1_left, eq1_right
+from wathamm import eq2_left, eq2_right
+
 pc = np.loadtxt("test_cff")
 
 ppwrs = powers(max_poly_degree, 2)
@@ -29,7 +34,6 @@ T = sc.linspace(0, time, totalt)
 
 tt,xx = np.meshgrid(T,X)
 in_pts = np.vstack([tt.flatten(),xx.flatten()]).T
-
 tt,xx = np.meshgrid(T,X)
 
 p = mvmonos(in_pts, ppwrs, [0, 0])
@@ -53,11 +57,12 @@ udvdx = dvdx.dot(v_cf)
 # data = np.hstack([in_pts,up.reshape(-1,1)])
 
 
-lbal_eq1 = udpdx
-rbal_eq1 = rho*(udvdt + lmd*uv/(2*d))
-lbal_eq2 = udpdt 
-rbal_eq2 = c2*rho*udvdx
- 
+lbal_eq1 = eq1_left(in_pts, pc)
+rbal_eq1 = eq1_right(in_pts, pc)
+lbal_eq2 = eq2_left(in_pts, pc)
+rbal_eq2 = eq2_right(in_pts, pc)
+
+
 
 data = {
     "T": in_pts[:, 0],
@@ -74,8 +79,11 @@ data = {
     "rbal_eq2":rbal_eq2,
 }
 
+
 df = pd.DataFrame(data)
 df.set_index("T")
+
+df.to_string(buf='out2', float_format=lambda x: "{:.3f}".format(x),header = True, index = True)
 
 pdata= {
         "T": T,
@@ -101,7 +109,7 @@ odf = pd.DataFrame(pdata)
 odf.plot(x="T",y=["v1","v2","v3","v4"])
 
      
-plt.show()
+# plt.show()
 odf.to_string(buf='out', float_format=lambda x: "{:.3f}".format(x),header = True, index = True)
 #df = df[abs(df.X-254.5)<0.1]
 
@@ -109,3 +117,35 @@ odf.to_string(buf='out', float_format=lambda x: "{:.3f}".format(x),header = True
 # df = df.set_index('p')
 #df.to_string(buf='out', float_format=lambda x: "{:.3f}".format(x),header = True, index = True)
 
+def vs(pts):
+    t,x = pts
+    if 1 - 1/timeclose*t > 0:
+        return 1 - 1/timeclose*t
+    else:
+        return 0
+
+monos = []
+rhs = []
+cff = []
+for i in range(treg):    
+    m,r,c = boundary_fnc(vs,0.01, 1, T_part[i],X_part[xreg - 1][-1])
+    # m,r,c = boundary_val(v0,0.01, 1, T_part[i],X_part[xreg - 1][-1])
+    # ind = make_id(i, 0)
+    # m = shifted(m, ind)
+    monos.append(m)
+    rhs.append(r)
+    cff.append(c)
+
+A = sc.vstack(monos)
+
+rhs = np.hstack(rhs)
+cff = np.hstack(cff).reshape(-1, 1)
+
+A /= cff
+ones = np.ones_like(cff)
+A1 = np.hstack([A, ones])
+A2 = np.hstack([-A, ones])
+
+print(A1[0])
+# print(np.dot(A1,pc), rhs)
+# print(np.dot(A1,pc) - rhs)

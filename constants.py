@@ -2,7 +2,7 @@ import numpy as np
 import more_itertools as mit
 
 length = 1400                     # Длина теплообменника         [м]
-time = 1                          # Время работы теплообменника  [с]
+time = 0.1                          # Время работы теплообменника  [с]
 timeclose = 0.05
 d = 0.5
 delta = 0.2
@@ -21,7 +21,7 @@ p0 = 10 *10**6
 
 xreg,treg = 1,1
 max_reg = xreg*treg
-max_poly_degree = 3
+max_poly_degree = 5
 
 pprx = 100                        # Точек на регион
 pprt = 1000

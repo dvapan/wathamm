@@ -46,31 +46,50 @@ def shifted(cffs,shift):
     cffs = sc.hstack([lzeros,cffs,rzeros])
     return cffs
 
+def eq1_left(pts, p_cf=None):
+    dpdx = mvmonoss(pts, ppwrs, 0, cff_cnt, [0, 1])
+    if p_cf is not None:
+        dpdx = dpdx.dot(p_cf)
+    return dpdx
+
+def eq1_right(pts, v_cf=None):
+    v = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 0])
+    dvdt = mvmonoss(pts, ppwrs, 1, cff_cnt, [1, 0])
+    if v_cf is not None:
+        v = v.dot(v_cf)
+        dvdt = dvdt.dot(v_cf)
+    return -rho*(dvdt + lmd*v/(2*d))
+
+def eq2_left(pts, p_cf=None):
+    dpdt = mvmonoss(pts, ppwrs, 0, cff_cnt, [1, 0])
+    if p_cf is not None:
+        dpdt = dpdt.dot(p_cf)
+    return dpdt
+
+def eq2_right(pts, v_cf=None):
+    dvdx = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 1])
+    if v_cf is not None:
+        dvdx = dvdx.dot(v_cf)
+
+    return c2*rho*dvdx
+
 def eq1(*grid_base):
     in_pts = nodes(*grid_base)
 
-    dpdx = mvmonoss(in_pts, ppwrs, 0, cff_cnt, [0, 1])
-
-    v = mvmonoss(in_pts, ppwrs, 1, cff_cnt, [0, 0])
-    dvdt = mvmonoss(in_pts, ppwrs, 1, cff_cnt, [1, 0])
-
-    monos = dpdx + rho*(dvdt + lmd*v/(2*d))
-
-    rhs = np.full(len(monos), 0)
-    cff = np.full(len(monos), 1)
-    return monos, rhs, cff
-
-def eq2(*grid_base):
-    in_pts = nodes(*grid_base)
-
-    dpdt = mvmonoss(in_pts, ppwrs, 0, cff_cnt, [1, 0])
-    dvdx = mvmonoss(in_pts, ppwrs, 1, cff_cnt, [0, 1])
-
-    
-    monos = dpdt - c2*rho*dvdx
+    monos = eq1_left(in_pts) - eq1_right(in_pts)
 
     rhs = np.full(len(monos), 0)
     cff = np.full(len(monos), 100)
+    return monos, rhs, cff
+
+
+def eq2(*grid_base):
+    in_pts = nodes(*grid_base)
+    
+    monos = eq2_left(in_pts) - eq2_right(in_pts)
+
+    rhs = np.full(len(monos), 0)
+    cff = np.full(len(monos), 10000)
     return monos, rhs, cff
 
 def boundary_val(val,eps, ind, *grid_base):
@@ -105,182 +124,98 @@ def shifted(cffs,shift):
 
 
 
-    
-monos = []
-rhs = []
-cff = []
-for i in range(treg):
-    for j in range(xreg):
-        conditions = (eq1(T_part[i], X_part[j]),
-                      eq2(T_part[i], X_part[j]))
-
-        ind = make_id(i, j)
-        for m, r, c in conditions:
-            m = shifted(m, ind)
-            monos.append(m)
-            rhs.append(r)
-            cff.append(c)
-
-
 def vs(pts):
     t,x = pts
-    if 1 - 1/0.2*t > 0:
-        return 1 - 1/0.2*t
+    if 1 - 1/timeclose*t > 0:
+        return 1 - 1/timeclose*t
     else:
         return 0
         
 
-
-for i in range(treg):    
-    # m,r,c = boundary_fnc(vs,0.01, 1, T_part[i],X_part[xreg - 1][-1])
-    m,r,c = boundary_val(v0,0.01, 1, T_part[i],X_part[xreg - 1][-1])
-    ind = make_id(i, 0)
-    # m = shifted(m, ind)
-    monos.append(m)
-    rhs.append(r)
-    cff.append(c)
-
-for j in range(xreg):
-    m,r,c = boundary_val(p0,1000, 0, T_part[0][0], X_part[j])
-    ind = make_id(0, j)
-    # m = shifted(m, ind)
-    monos.append(m)
-    rhs.append(r)
-    cff.append(c)
-
-for j in range(xreg):
-    m,r,c = boundary_val(v0,0.01, 1, T_part[0][0], X_part[j])
-    ind = make_id(0, j)
-    # m = shifted(m, ind)
-    monos.append(m)
-    rhs.append(r)
-    cff.append(c)
-
-
-
-# def betw_blocks(pws, gind,dind, pind, R=None):
-#     i, j = gind
-#     di,dj = dind
-#     if di > 0:
-#         Ti1 = -1
-#         Ti2 = 0
-#     else:
-#         Ti1 = 0
-#         Ti2 = -1
-#     ind = make_id(i, j)
-#     if R is None:
-#         grid_base = T_part[i][Ti1], X_part[j]
-#     else:
-#         grid_base = T_part[i][Ti1], X_part[j],R
-#     ptr_bnd = nodes(*grid_base)
-#     val = mvmonoss(ptr_bnd, pws, pind, cff_cnt)
-#     val = shifted(val, ind)
-
-#     ni, nj = i+di, j
-#     indn = make_id(ni, nj)
-#     if R is None:
-#         grid_basen = T_part[ni][Ti2], X_part[nj]
-#     else:
-#         grid_basen = T_part[ni][Ti2], X_part[nj], R
-#     ptr_bndn = nodes(*grid_basen)
-#     valn = mvmonoss(ptr_bndn, pws, pind, cff_cnt)
-#     valn = shifted(valn, indn)
-
-#     monos = []
-
-#     monos.append(valn - val)
-
-#     if dj > 0:
-#         Tj1 = -1
-#         Tj2 = 0
-#     else:
-#         Tj1 = 0
-#         Tj2 = -1
-#     if R is None:
-#         grid_base = T_part[i], X_part[j][Tj1]
-#     else:
-#         grid_base = T_part[i], X_part[j][Tj1],R
-#     ptr_bnd = nodes(*grid_base)
-#     val = mvmonoss(ptr_bnd, pws, pind, cff_cnt)
-#     val = shifted(val, ind)
-
-#     ni, nj = i, j+dj
-#     indn = make_id(ni, nj)
-#     if R is None:
-#         grid_basen = T_part[ni], X_part[nj][Tj2]
-#     else:
-#         grid_basen = T_part[ni], X_part[nj][Tj2], R
-
-#     ptr_bndn = nodes(*grid_basen)
-#     valn = mvmonoss(ptr_bndn, pws, pind, cff_cnt)
-#     valn = shifted(valn, indn)
-
-#     monos.append(valn - val)
-#     monos = np.vstack(monos)
-#     rhs = np.full(len(monos), 0)
-#     cff = np.full(len(monos), 1)
-#     return monos, rhs, cff
-
-
-# conditions = []
-# for i in range(treg - 1):
-#     for j in range(xreg - 1):
-#         conditions.append(betw_blocks(powers(3, 2), (i, j),(1,1), 0))
-# for i in range(1,treg):
-#     for j in range(1, xreg):
-#         conditions.append(betw_blocks(powers(3, 2), (i, j),(-1,-1), 1))
-
     
+if __name__ == "__main__":
+    monos = []
+    rhs = []
+    cff = []
+    for i in range(treg):
+        for j in range(xreg):
+            conditions = (eq1(T_part[i], X_part[j]),
+                          eq2(T_part[i], X_part[j]))
 
-A = sc.vstack(monos)
+            ind = make_id(i, j)
+            for m, r, c in conditions:
+                m = shifted(m, ind)
+                monos.append(m)
+                rhs.append(r)
+                cff.append(c)
 
-rhs = np.hstack(rhs)
-cff = np.hstack(cff).reshape(-1, 1)
+    for i in range(treg):    
+        m,r,c = boundary_fnc(vs,0.001, 1, T_part[i],X_part[xreg - 1][-1])
+        # m,r,c = boundary_val(v0,0.01, 1, T_part[i],X_part[xreg - 1][-1])
+        ind = make_id(i, 0)
+        # m = shifted(m, ind)
+        monos.append(m)
+        rhs.append(r)
+        cff.append(c)
 
-s = CyClpSimplex()
+    for j in range(xreg):
+        m,r,c = boundary_val(p0,1000, 0, T_part[0][0], X_part[j])
+        ind = make_id(0, j)
+        # m = shifted(m, ind)
+        monos.append(m)
+        rhs.append(r)
+        cff.append(c)
 
-s.logLevel = 1
-
-lp_dim = A.shape[1] + 1
-# A /= cff
-# ones = np.ones_like(cff)
-A1 = np.hstack([A, cff])
-A2 = np.hstack([-A, cff])
-
-x = s.addVariable('x', lp_dim)
-
-scl_val = A1.max()
-
-# A1 /= scl_val
-# A2 /= scl_val
-# rhs /= scl_val
-
-
-A1 = np.matrix(A1)
-A2 = np.matrix(A2)
-nnz = np.count_nonzero(A1)+np.count_nonzero(A2)
-
-b1 = CyLPArray(rhs)
-b2 = CyLPArray(-rhs)
-
-s += A1 * x >= b1
-s += A2 * x >= b2
-
-s += x[lp_dim - 1] >= 0
-# s += x[lp_dim - 1] <= 1
-s.objective = x[lp_dim - 1]
-
-print ("TASK SIZE:")
-print ("XCOUNT:",lp_dim)
-print ("GXCOUNT:",len(rhs)+len(rhs))
-nnz = np.count_nonzero(A1)+np.count_nonzero(A2)
-aec = len(rhs)*lp_dim*2
-print("nonzeros:",nnz, aec, nnz/aec)
-
-print("START")
-s.primal()
-outx = s.primalVariableSolution['x']
-pc = sc.split(outx[:-1],max_reg)
-np.savetxt("test_cff", pc)
+    for j in range(xreg):
+        m,r,c = boundary_val(v0,0.001, 1, T_part[0][0], X_part[j])
+        ind = make_id(0, j)
+        # m = shifted(m, ind)
+        monos.append(m)
+        rhs.append(r)
+        cff.append(c)
 
 
+    A = sc.vstack(monos)
+
+    rhs = np.hstack(rhs) 
+    cff = np.hstack(cff).reshape(-1, 1)
+
+    s = CyClpSimplex()
+
+    s.logLevel = 3
+
+    lp_dim = A.shape[1] + 1
+    A /= cff
+    rhs /= cff.reshape(-1)
+    ones = np.ones_like(cff)
+    A1 = np.hstack([A, ones])
+    A2 = np.hstack([-A, ones])
+
+    x = s.addVariable('x', lp_dim)
+
+    A1 = np.matrix(A1)
+    A2 = np.matrix(A2)
+    nnz = np.count_nonzero(A1)+np.count_nonzero(A2)
+
+    b1 = CyLPArray(rhs)
+    b2 = CyLPArray(-rhs)
+
+    s += A1 * x >= b1
+    s += A2 * x >= b2
+
+    s += x[lp_dim - 1] >= 0
+    # s += x[lp_dim - 1] <= 1
+    s.objective = x[lp_dim - 1]
+
+    print ("TASK SIZE:")
+    print ("XCOUNT:",lp_dim)
+    print ("GXCOUNT:",len(rhs)+len(rhs))
+    nnz = np.count_nonzero(A1)+np.count_nonzero(A2)
+    aec = len(rhs)*lp_dim*2
+    print("nonzeros:",nnz, aec, nnz/aec)
+
+    print("START")
+    s.primal()
+    outx = s.primalVariableSolution['x']
+    pc = sc.split(outx[:-1],max_reg)
+    np.savetxt("test_cff", pc)
