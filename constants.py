@@ -1,8 +1,8 @@
 import numpy as np
 import more_itertools as mit
 
-length = 1400                     # Длина теплообменника         [м]
-time = 0.1                          # Время работы теплообменника  [с]
+length = 1400                     # Длина трубы          [м]
+time = 0.5                          # Время расчета      [с]
 timeclose = 0.05
 d = 0.5
 delta = 0.2
