@@ -15,6 +15,7 @@ from wathamm import boundary_fnc
 
 from wathamm import eq1_left, eq1_right
 from wathamm import eq2_left, eq2_right
+from wathamm import vs
 
 pc = np.loadtxt("test_cff")
 
@@ -69,83 +70,97 @@ data = {
     "X": in_pts[:, 1],
     "p": up,
     "v": uv,
-    "dpdx":udpdx,
-    "dpdt":udpdt,
-    "dvdx":udvdx,
-    "dvdt":udvdt,
+    # "dpdx":udpdx,
+    # "dpdt":udpdt,
+    # "dvdx":udvdx,
+    # "dvdt":udvdt,
     "lbal_eq1":lbal_eq1,
     "rbal_eq1":rbal_eq1,
+    "resid1": rbal_eq1 - lbal_eq1,
+    "cff1": np.maximum(lbal_eq1,rbal_eq1)*0.01,
     "lbal_eq2":lbal_eq2,
     "rbal_eq2":rbal_eq2,
+    "resid2": rbal_eq2 - lbal_eq2,
+    "cff2": np.maximum(lbal_eq2,rbal_eq2)*0.01,
 }
 
 
 df = pd.DataFrame(data)
 df.set_index("T")
 
-df.to_string(buf='out2', float_format=lambda x: "{:.3f}".format(x),header = True, index = True)
-
-pdata= {
-        "T": T,
-        "p1":df[df.X==X[0]]["p"].to_numpy(),
-        "p2":df[df.X==X[65]]["p"].to_numpy(),
-        "p3":df[df.X==X[70]]["p"].to_numpy(),
-        "p4":df[df.X==X[-1]]["p"].to_numpy(),
-        }
-
-pdf = pd.DataFrame(pdata)           
-pdf.plot(x="T",y=["p1","p2","p3","p4"])
+df.to_string(buf='out', float_format=lambda x: "{:.3f}".format(x),header = True, index = True)
 
 
-pdata= {
-        "T": T,
-        "v1":df[df.X==X[0]]["v"].to_numpy(),
-        "v2":df[df.X==X[65]]["v"].to_numpy(),
-        "v3":df[df.X==X[70]]["v"].to_numpy(),
-        "v4":df[df.X==X[-1]]["v"].to_numpy(),
-        }
+tt,xx = np.meshgrid(T[0],X) 
+p_pts = np.vstack([tt.flatten(),xx.flatten()]).T
+tt,xx = np.meshgrid(T[0],X)
 
-odf = pd.DataFrame(pdata)           
-odf.plot(x="T",y=["v1","v2","v3","v4"])
+p = mvmonos(p_pts, ppwrs, [0, 0])
+up = p.dot(p_cf)
 
-     
-# plt.show()
-odf.to_string(buf='out', float_format=lambda x: "{:.3f}".format(x),header = True, index = True)
-#df = df[abs(df.X-254.5)<0.1]
 
-#df = df.pivot(index='X', columns='T').stack()
-# df = df.set_index('p')
-#df.to_string(buf='out', float_format=lambda x: "{:.3f}".format(x),header = True, index = True)
+data_p_init = {
+    "T": p_pts[:, 0],
+    "X": p_pts[:, 1],
+    "p": up,
+    "resid_p": up - p0
+}
 
-def vs(pts):
-    t,x = pts
-    if 1 - 1/timeclose*t > 0:
-        return 1 - 1/timeclose*t
-    else:
-        return 0
 
-monos = []
-rhs = []
-cff = []
-for i in range(treg):    
-    m,r,c = boundary_fnc(vs,0.01, 1, T_part[i],X_part[xreg - 1][-1])
-    # m,r,c = boundary_val(v0,0.01, 1, T_part[i],X_part[xreg - 1][-1])
-    # ind = make_id(i, 0)
-    # m = shifted(m, ind)
-    monos.append(m)
-    rhs.append(r)
-    cff.append(c)
+df = pd.DataFrame(data_p_init)
+df.set_index("T")
 
-A = sc.vstack(monos)
+df.to_string(buf='out_p_init', float_format=lambda x: "{:.3f}".format(x),header = True, index = True)
 
-rhs = np.hstack(rhs)
-cff = np.hstack(cff).reshape(-1, 1)
 
-A /= cff
-ones = np.ones_like(cff)
-A1 = np.hstack([A, ones])
-A2 = np.hstack([-A, ones])
+# def vs(pts):
+#     t,x = pts
+#     if 1 - 1/timeclose*t > 0:
+#         return 1 - 1/timeclose*t
+#     else:
+#         return 0
 
-print(A1[0])
-# print(np.dot(A1,pc), rhs)
-# print(np.dot(A1,pc) - rhs)
+
+tt,xx = np.meshgrid(T[0],X) 
+v_pts = np.vstack([tt.flatten(),xx.flatten()]).T
+tt,xx = np.meshgrid(T[0],X)
+
+v = mvmonos(v_pts, ppwrs, [0, 0])
+uv = p.dot(v_cf)
+
+
+data_v_init = {
+    "T": v_pts[:, 0],
+    "X": v_pts[:, 1],
+    "v": uv,
+    "resid_v": uv - v0
+}
+
+
+df = pd.DataFrame(data_v_init)
+df.set_index("T")
+
+df.to_string(buf='out_v_init', float_format=lambda x: "{:.3f}".format(x),header = True, index = True)
+
+tt,xx = np.meshgrid(T,X[-1]) 
+v_pts = np.vstack([tt.flatten(),xx.flatten()]).T
+tt,xx = np.meshgrid(T,X[-1])
+
+v = mvmonos(v_pts, ppwrs, [0, 0])
+uv = p.dot(v_cf)
+
+rhs = np.apply_along_axis(vs, 1, v_pts)
+
+data_v_init2 = {
+    "T": v_pts[:, 0],
+    "X": v_pts[:, 1],
+    "v": uv,
+    "resid_v": uv - rhs
+}
+
+
+df = pd.DataFrame(data_v_init2)
+df.set_index("T")
+
+df.to_string(buf='out_v_init2', float_format=lambda x: "{:.3f}".format(x),header = True, index = True)
+

@@ -1,8 +1,8 @@
 import numpy as np
 import more_itertools as mit
 
-length = 1400                     # Длина трубы          [м]
-time = 0.5                          # Время расчета      [с]
+length = 400                     # Длина трубы          [м]
+time = 0.1                          # Время расчета      [с]
 timeclose = 0.05
 d = 0.5
 delta = 0.2
@@ -24,7 +24,7 @@ max_reg = xreg*treg
 max_poly_degree = 5
 
 pprx = 100                        # Точек на регион
-pprt = 1000
+pprt = 400
 
 totalx = xreg*pprx - xreg + 1
 totalt = treg*pprt - treg + 1
