@@ -50,10 +50,10 @@ def eq1_left(pts, cf=None):
     dpdx = mvmonoss(pts, ppwrs, 0, cff_cnt, [0, 1])
     if cf is not None:
         dpdx = dpdx.dot(cf)
-    return dpdx
+    return dpdx/1000
 
 def eq1_right(pts, cf=None):
-    v = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 0])
+    v = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 0])*1000
     dvdt = mvmonoss(pts, ppwrs, 1, cff_cnt, [1, 0])
     if cf is not None:
         v = v.dot(cf)
@@ -71,7 +71,7 @@ def eq2_right(pts, cf=None):
     if cf is not None:
         dvdx = dvdx.dot(cf)
 
-    return -c2*rho*dvdx
+    return -c2*rho*dvdx/1000
 
 def eq1(*grid_base, cf=None):
     in_pts = nodes(*grid_base)
@@ -142,8 +142,9 @@ def shifted(cffs,shift):
 
 def vs(pts):
     t,x = pts
-    if 1 - 1/timeclose*t > 0:
-        return 1 - 1/timeclose*t
+    k = timeclose*time
+    if 1 - 1/k*t > 0:
+        return 1 - 1/k*t
     else:
         return 0
         
@@ -169,7 +170,7 @@ def count_points(poly_coeff=None):
                 cnst_type.append(t)
 
     for i in range(treg):    
-        m,r,c,t = boundary_fnc(vs,0.01, 1, T_part[i],X_part[xreg - 1][-1])
+        m,r,c,t = boundary_fnc(vs,0.03, 1, T_part[i],X_part[xreg - 1][-1])
         # m,r,c = boundary_val(v0,0.01, 1, T_part[i],X_part[xreg - 1][-1])
         ind = make_id(i, 0)
         # m = shifted(m, ind)
@@ -179,7 +180,7 @@ def count_points(poly_coeff=None):
         cnst_type.append(t)
         
     for j in range(xreg):
-        m,r,c,t = boundary_val(p0,1000, 0, T_part[0][0], X_part[j])
+        m,r,c,t = boundary_val(p0,10000, 0, T_part[0][0], X_part[j])
         ind = make_id(0, j)
         # m = shifted(m, ind)
         monos.append(m)
@@ -188,7 +189,7 @@ def count_points(poly_coeff=None):
         cnst_type.append(t)
 
     for i in range(treg):
-        m,r,c,t = boundary_val(p0,1000, 0, T_part[i], X_part[0][0])
+        m,r,c,t = boundary_val(p0,10000, 0, T_part[i], X_part[0][0])
         ind = make_id(i, 0)
         # m = shifted(m, ind)
         monos.append(m)
@@ -198,17 +199,8 @@ def count_points(poly_coeff=None):
 
         
     for j in range(xreg):
-        m,r,c,t = boundary_val(v0,0.01, 1, T_part[0][0], X_part[j])
+        m,r,c,t = boundary_val(v0,0.03, 1, T_part[0][0], X_part[j])
         ind = make_id(0, j)
-        # m = shifted(m, ind)
-        monos.append(m)
-        rhs.append(r)
-        cff.append(c)
-        cnst_type.append(t)
-
-    for i in range(treg):
-        m,r,c,t = boundary_val(v0,0.01, 1, T_part[i], X_part[0][0])
-        ind = make_id(i, 0)
         # m = shifted(m, ind)
         monos.append(m)
         rhs.append(r)
@@ -238,7 +230,7 @@ def count():
     #     pc = None
     pc = None
 
-    monos, rhs, ct = count_points()
+    monos, rhs, ct = count_points(poly_coeff=pc)
 
     s = CyClpSimplex()
 
@@ -255,7 +247,8 @@ def count():
 
     x = s.addVariable('x', lp_dim)
 
-    A = np.vstack([A1,A2])
+    A = np.vstack([A1,A2])            
+
     A = np.matrix(A)
     nnz = np.count_nonzero(A1)+np.count_nonzero(A2)
 
@@ -275,7 +268,6 @@ def count():
     nnz = np.count_nonzero(A)
     aec = len(rhs)*lp_dim
     print("nonzeros:",nnz, aec, nnz/aec)
-    
     print("START")
     s.primal()
     outx = s.primalVariableSolution['x']
@@ -286,9 +278,12 @@ def count():
     k = list(s.primalConstraintSolution.keys())[0]
     k2 =list(s.dualConstraintSolution.keys())[0]
     
-    data = {"type":ct,
-            "resd":s.primalConstraintSolution[k],
-            "dual":s.dualConstraintSolution[k2]}
+    data = {
+        "type":ct,
+        "resd":s.primalConstraintSolution[k],
+        "dual":s.dualConstraintSolution[k2]
+    }
+    
     df = pd.DataFrame(data)
     df.to_csv('out.csv', header = True, index = False)
 
