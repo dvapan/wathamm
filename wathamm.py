@@ -1,3 +1,6 @@
+"""
+Расчет мономиального базиса для переменных
+"""
 import numpy as np
 import scipy as sc
 from scipy.sparse import csr_matrix
