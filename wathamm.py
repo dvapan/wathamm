@@ -10,12 +10,13 @@ from poly import mvmonos, powers
 from constants import *
 import pandas as pd
 
+
+import matplotlib.pyplot as plt
+
 ppwrs = powers(max_poly_degree, 2)
 psize = len(ppwrs)
 
-
 cff_cnt = [psize,psize]
-
 
 def mvmonoss(x, powers, shift_ind, cff_cnt, diff=None):
     lzeros = sum((cff_cnt[i] for i in range(shift_ind)))
@@ -142,7 +143,7 @@ def shifted(cffs,shift):
 
 def vs(pts):
     t,x = pts
-    k = timeclose*time
+    k = timeclose*total_time
     if 1 - 1/k*t > 0:
         return 1 - 1/k*t
     else:
@@ -221,20 +222,57 @@ def count_points(poly_coeff=None):
     
 
 
+def solve_simplex(A, rhs, ct=None, logLevel=0):
+    s = CyClpSimplex()
+    s.logLevel = logLevel
+    lp_dim = A.shape[1] 
 
-def count():
+   
+    x = s.addVariable('x', lp_dim)
+    A = np.matrix(A)
+    rhs = CyLPArray(rhs)
+
+    s += A * x >= rhs
+
+    s += x[lp_dim - 1] >= 0
+    s.objective = x[lp_dim - 1]
+
+    nnz = np.count_nonzero(A)
+    print (f"TASK SIZE XCOUNT: {lp_dim} GXCOUNT: {len(rhs)}")
+
+    s.primal()
+    k = list(s.primalConstraintSolution.keys())
+    k2 =list(s.dualConstraintSolution.keys())
+    q = s.dualConstraintSolution[k2[0]]
+    print(f"{s.getStatusString()} objective: {s.objectiveValue}")
+    print("nonzeros rhs:",np.count_nonzero(s.primalConstraintSolution[k[0]]))
+    print("nonzeros dual:",np.count_nonzero(s.dualConstraintSolution[k2[0]]))
+
+    if ct is not None:
+        data = {
+            "type":ct,
+            "resd":s.primalConstraintSolution[k],
+            "dual":s.dualConstraintSolution[k2]
+        }
+    
+        df = pd.DataFrame(data)
+        df.to_csv('out.csv', header = True, index = False)
+
+    
+    return s.primalVariableSolution['x']
+
+
+def count(num_cnst_add):
     import os.path
+    import sys
     # if os.path.isfile("test_cff"):
     #     pc = np.loadtxt("test_cff")    
     # else:
     #     pc = None
     pc = None
+    ofile = sys.argv[1]
 
     monos, rhs, ct = count_points(poly_coeff=pc)
-
-    s = CyClpSimplex()
-
-    s.logLevel = 3
 
     ct = np.hstack([ct,ct])
     
@@ -244,50 +282,67 @@ def count():
     
     A1 = np.hstack([monos, ones])
     A2 = np.hstack([-monos, ones])
+    A = np.vstack([A1,A2])
 
-    x = s.addVariable('x', lp_dim)
+    rhs = np.hstack([rhs,-rhs])
 
-    A = np.vstack([A1,A2])            
+    m1 = lp_dim*2
 
-    A = np.matrix(A)
-    nnz = np.count_nonzero(A1)+np.count_nonzero(A2)
+    indeces = np.random.choice(len(A), m1, replace=False)
 
-    b = np.hstack([rhs, -rhs])
-    
-    b = CyLPArray(b)
+    task_A = A[indeces]
+    task_rhs = rhs[indeces]
 
-    s += A * x >= b
+    run = True
+    itnum = 0
+    while run:
+        outx = solve_simplex(task_A, task_rhs, logLevel=1)
+        otkl = np.dot(A,outx) - rhs
 
-    s += x[lp_dim - 1] >= 0
-    # s += x[lp_dim - 1] <= 1
-    s.objective = x[lp_dim - 1]
+        itnum += 1
+        print("#"*102)
+        print ("#{:^100s}#".format("ITERATION {}".format(itnum)))
+        i = np.argmin(otkl)
+        print("#{:^100s}#".format("count otkl < 0: {} / {}".format(len(otkl[otkl < 0]), len(otkl))))
+        print("#{:^100s}#".format("{} {}".format(i,otkl[i])))
+        print("#"*102)
 
-    print ("TASK SIZE:")
-    print ("XCOUNT:",lp_dim)
-    print ("GXCOUNT:",len(b))
-    nnz = np.count_nonzero(A)
-    aec = len(rhs)*lp_dim
-    print("nonzeros:",nnz, aec, nnz/aec)
-    print("START")
-    s.primal()
-    outx = s.primalVariableSolution['x']
-    pc = sc.split(outx[:-1],max_reg)[0]
-    np.savetxt("test_cff", pc)
-    print(pc)
+        if abs(np.min(otkl)) < 0.01:
+            run = False
+            break
+        worst_A = A[otkl.argsort()][:num_cnst_add]
+        worst_rhs = rhs[otkl.argsort()][:num_cnst_add]
+        task_A = np.vstack([task_A,worst_A])
+        task_rhs = np.hstack([task_rhs,worst_rhs])
 
-    k = list(s.primalConstraintSolution.keys())[0]
-    k2 =list(s.dualConstraintSolution.keys())[0]
-    
-    data = {
-        "type":ct,
-        "resd":s.primalConstraintSolution[k],
-        "dual":s.dualConstraintSolution[k2]
-    }
-    
-    df = pd.DataFrame(data)
-    df.to_csv('out.csv', header = True, index = False)
+    ofile += f"p{max_poly_degree}nc{num_cnst_add}"
+    np.savetxt(ofile, outx)
+    print(outx)
 
-    
-    
+
+
+
+def test():
+    import time
+
+    times = []
+    f = open("times.dat", "w")
+    f.write("n t\n")
+    f.close()
+    num_cnst_add = list(range(100,2000,50))
+    for i,n in enumerate(num_cnst_add):   
+        stime = time.time()
+        count(n)
+        t = time.time() - stime
+        f = open("times.dat", "a")
+        f.write(f"{n} {t}\n")
+        f.close()
+        print("--- {} seconds ---".format(t) )
+    f.close()
+
 if __name__ == "__main__":
-    count()
+    import time
+    stime = time.time()
+    count(500)
+    t = time.time() - stime
+    print("--- {} seconds ---".format(t) )

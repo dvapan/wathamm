@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button, RadioButtons
@@ -16,7 +18,11 @@ from wathamm import boundary_fnc
 from wathamm import eq1_left, eq1_right
 from wathamm import eq2_left, eq2_right
 
-pc = np.loadtxt("test_cff")
+filename = sys.argv[1]
+
+pc = np.loadtxt(filename)
+print("Polynom approximate with: {}".format(pc[-1]))
+pc = pc[:-1]
 
 ppwrs = powers(max_poly_degree, 2)
 psize = len(ppwrs)
@@ -52,7 +58,7 @@ axcolor = 'lightgoldenrodyellow'
 axtime = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
 # axamp = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=axcolor)
 
-stime = Slider(axtime, 'Time', 0, time, valinit=0)
+stime = Slider(axtime, 'Time', 0, total_time, valinit=0)
 
 
 

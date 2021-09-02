@@ -2,7 +2,7 @@ import numpy as np
 import more_itertools as mit
 
 length = 1.4                     # Длина трубы          [м]
-time = 0.8                          # Время расчета      [с]
+total_time = 0.8                          # Время расчета      [с]
 timeclose = 0.5                     # Время закрытия от общего времени
 d = 0.5
 delta = 0.2
@@ -32,10 +32,10 @@ totalt = treg*pprt - treg + 1
 print("PPR:",totalx,totalt)
 
 dx = length/xreg
-dt = time/treg
+dt = total_time/treg
 
 X = np.linspace(0, length, totalx)
-T = np.linspace(0, time, totalt)
+T = np.linspace(0, total_time, totalt)
 
 X_part = list(mit.windowed(X,n=pprx,step=pprx - 1))
 T_part = list(mit.windowed(T,n=pprt,step=pprt - 1))

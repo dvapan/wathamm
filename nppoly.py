@@ -12,7 +12,8 @@ def diff_coeff(n,d):
         lst = [powers(n,i) for i in range(d)]
         return np.multiply.reduce(lst)
     
-
+def mvmonos(x, powers, diff=None):
+    pass
 
 if __name__ == "__main__":
     print(powers(3,0))
