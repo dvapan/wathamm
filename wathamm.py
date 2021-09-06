@@ -61,7 +61,7 @@ def eq1_right(pts, cf=None):
     if cf is not None:
         v = v.dot(cf)
         dvdt = dvdt.dot(cf)
-    return -rho*(dvdt + lmd*v/(2*d))
+    return -rho*(dvdt + lmd*v/(2*d))/1000
 
 def eq2_left(pts, cf=None):
     dpdt = mvmonoss(pts, ppwrs, 0, cff_cnt, [1, 0])
@@ -74,7 +74,7 @@ def eq2_right(pts, cf=None):
     if cf is not None:
         dvdx = dvdx.dot(cf)
 
-    return -c2*rho*dvdx/1000
+    return -c2*rho*dvdx/1000/1000
 
 def eq1(*grid_base, cf=None):
     in_pts = nodes(*grid_base)
@@ -83,7 +83,7 @@ def eq1(*grid_base, cf=None):
 
     rhs = np.full(len(monos), 0)
     if cf is None:
-        cff = np.full(len(monos), 100)
+        cff = np.full(len(monos), 0.1)
     else:
         left_bal = np.abs(eq1_left(in_pts, cf))
         right_bal = np.abs(eq1_right(in_pts, cf))
@@ -100,7 +100,7 @@ def eq2(*grid_base, cf=None):
 
     rhs = np.full(len(monos), 0)
     if cf is None:
-        cff = np.full(len(monos), 10000)
+        cff = np.full(len(monos), 10)
     else:
         left_bal = np.abs(eq2_left(in_pts, cf))
         right_bal = np.abs(eq2_right(in_pts, cf))
@@ -183,7 +183,7 @@ def count_points(poly_coeff=None):
         cnst_type.append(t)
         
     for j in range(xreg):
-        m,r,c,t = boundary_val(p0,10000, 0, T_part[0][0], X_part[j])
+        m,r,c,t = boundary_val(p0,10, 0, T_part[0][0], X_part[j])
         ind = make_id(0, j)
         # m = shifted(m, ind)
         monos.append(m)
@@ -192,7 +192,7 @@ def count_points(poly_coeff=None):
         cnst_type.append(t)
 
     for i in range(treg):
-        m,r,c,t = boundary_val(p0,10000, 0, T_part[i], X_part[0][0])
+        m,r,c,t = boundary_val(p0,10, 0, T_part[i], X_part[0][0])
         ind = make_id(i, 0)
         # m = shifted(m, ind)
         monos.append(m)
@@ -238,9 +238,8 @@ def solve_simplex(A, rhs, ct=None, logLevel=0):
 
     s += x[lp_dim - 1] >= 0
     s.objective = x[lp_dim - 1]
-
     nnz = np.count_nonzero(A)
-    print (f"TASK SIZE XCOUNT: {lp_dim} GXCOUNT: {len(rhs)}")
+    logging.debug(f"TASK SIZE XCOUNT: {lp_dim} GXCOUNT: {len(rhs)}")
 
     s.primal()
     k = list(s.primalConstraintSolution.keys())
@@ -264,7 +263,7 @@ def solve_simplex(A, rhs, ct=None, logLevel=0):
     return s.primalVariableSolution['x']
 
 
-def count(num_cnst_add, eps=0.01):
+def count(num_cnst_add=None, eps=0.01):
     import os.path
     import sys
     # if os.path.isfile("test_cff"):
@@ -275,6 +274,9 @@ def count(num_cnst_add, eps=0.01):
     ofile = sys.argv[1]
 
     monos, rhs, ct = count_points(poly_coeff=pc)
+    num_cnst_add = len(monos[0])*4
+    print("###############",num_cnst_add)
+
 
     ct = np.hstack([ct,ct])
     
@@ -297,8 +299,10 @@ def count(num_cnst_add, eps=0.01):
 
     run = True
     itnum = 0
+    bs = None
     while run:
         stime = time.time()
+
         outx = solve_simplex(task_A, task_rhs, logLevel=1)
         t = time.time() - stime
 
@@ -307,23 +311,56 @@ def count(num_cnst_add, eps=0.01):
         itnum += 1
         i = np.argmin(otkl)
         logging.info(f"iter {itnum}; {t:.2f} s")
-        logging.debug("count otkl < 0: {} / {}".format(len(otkl[otkl < 0]), len(otkl)))
-        logging.debug("count otkl < -{}: {} / {}".format(eps,len(otkl[otkl < -eps]), len(otkl)))
-        logging.debug(f"count active constraints {len()}")
+        logging.debug(f"count otkl < 0: {len(otkl[otkl < 0])} / {len(otkl)}")
+        logging.debug(f"count otkl < -{eps}: {len(otkl[otkl < -eps])} / {len(otkl)}")
+        # logging.debug(f"count active constraints {len()}")
         logging.debug(f"fx: {outx[-1]} {otkl[i]}")
 
         if abs(np.min(otkl)) < eps:
             run = False
             break
+
+        num_cnst_add = max(num_cnst_add, int(np.round(len(task_A)*0.15)))
+        num_cnst_add = min(num_cnst_add, len(otkl[otkl < -eps]))
+        logging.debug(f"num_cnst_add: {num_cnst_add}")
+
+
         worst_A = A[otkl.argsort()][:num_cnst_add]
         worst_rhs = rhs[otkl.argsort()][:num_cnst_add]
+
+        otkl = np.dot(task_A,outx) - task_rhs
+
+        
+        nact_A = task_A[abs(otkl) >= eps]
+        nact_rhs = task_rhs[abs(otkl) >= eps]
+        act_A = task_A[abs(otkl) < eps]
+        act_rhs = task_rhs[abs(otkl) < eps]
+        print(nact_A.shape)
+        print(act_A.shape)
+        q = np.dot(nact_A[:,:-1], act_A[:,:-1].T)
+        print(q.shape)
+        w1 = np.all(q >= eps, axis = 1)
+        w2 = np.all(q <= eps, axis = 1)
+
+        w = w1 | w2
+        w = ~w
+
+        la = len(task_A)
+        task_A = np.vstack([act_A,nact_A[w]])
+        task_rhs = np.hstack([act_rhs,nact_rhs[w]])
+        dl = la - len(task_A)
+        logging.debug(f" filtered: {dl} constraints")
+
+
         task_A = np.vstack([task_A, worst_A])
         task_rhs = np.hstack([task_rhs, worst_rhs])
 
-        nonactive_constr = otkl[abs(otkl) >= 0.001]
-        active_constr = otkl[abs(otkl) < 0.001]
+        # otkl = np.dot(task_A,outx) - task_rhs
 
-    ofile += f"p{max_poly_degree}nc{num_cnst_add}"
+        
+        
+
+    ofile += f"p{max_poly_degree}"
     np.savetxt(ofile, outx)
     print(outx)
 
@@ -353,6 +390,6 @@ if __name__ == "__main__":
     logging.basicConfig(filename='wathamm.log', level=logging.DEBUG,
                         format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H-%M-%S')
     stime = time.time()
-    count(1000)
+    count()
     t = time.time() - stime
     logging.debug("total time {} seconds".format(t) )

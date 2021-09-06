@@ -21,7 +21,7 @@ p0 = 10*10**6
 
 xreg,treg = 1,1
 max_reg = xreg*treg
-max_poly_degree = 11
+max_poly_degree = 7
 
 pprx = 100                        # Точек на регион
 pprt = 400
