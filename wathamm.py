@@ -1,6 +1,3 @@
-"""
-Расчет мономиального базиса для переменных
-"""
 import numpy as np
 import scipy as sc
 from scipy.sparse import csr_matrix
@@ -8,6 +5,8 @@ from cylp.cy import CyClpSimplex
 from cylp.py.modeling.CyLPModel import CyLPArray
 
 from poly import mvmonos, powers
+
+import logging
 
 
 from constants import *
@@ -265,7 +264,7 @@ def solve_simplex(A, rhs, ct=None, logLevel=0):
     return s.primalVariableSolution['x']
 
 
-def count(num_cnst_add):
+def count(num_cnst_add, eps=0.01):
     import os.path
     import sys
     # if os.path.isfile("test_cff"):
@@ -299,24 +298,30 @@ def count(num_cnst_add):
     run = True
     itnum = 0
     while run:
+        stime = time.time()
         outx = solve_simplex(task_A, task_rhs, logLevel=1)
+        t = time.time() - stime
+
         otkl = np.dot(A,outx) - rhs
 
         itnum += 1
-        print("#"*102)
-        print ("#{:^100s}#".format("ITERATION {}".format(itnum)))
         i = np.argmin(otkl)
-        print("#{:^100s}#".format("count otkl < 0: {} / {}".format(len(otkl[otkl < 0]), len(otkl))))
-        print("#{:^100s}#".format("{} {}".format(i,otkl[i])))
-        print("#"*102)
+        logging.info(f"iter {itnum}; {t:.2f} s")
+        logging.debug("count otkl < 0: {} / {}".format(len(otkl[otkl < 0]), len(otkl)))
+        logging.debug("count otkl < -{}: {} / {}".format(eps,len(otkl[otkl < -eps]), len(otkl)))
+        logging.debug(f"count active constraints {len()}")
+        logging.debug(f"fx: {outx[-1]} {otkl[i]}")
 
-        if abs(np.min(otkl)) < 0.01:
+        if abs(np.min(otkl)) < eps:
             run = False
             break
         worst_A = A[otkl.argsort()][:num_cnst_add]
         worst_rhs = rhs[otkl.argsort()][:num_cnst_add]
-        task_A = np.vstack([task_A,worst_A])
-        task_rhs = np.hstack([task_rhs,worst_rhs])
+        task_A = np.vstack([task_A, worst_A])
+        task_rhs = np.hstack([task_rhs, worst_rhs])
+
+        nonactive_constr = otkl[abs(otkl) >= 0.001]
+        active_constr = otkl[abs(otkl) < 0.001]
 
     ofile += f"p{max_poly_degree}nc{num_cnst_add}"
     np.savetxt(ofile, outx)
@@ -340,12 +345,14 @@ def test():
         f = open("times.dat", "a")
         f.write(f"{n} {t}\n")
         f.close()
-        print("--- {} seconds ---".format(t) )
+        logging.debug("total time {} seconds".format(t) )
     f.close()
 
 if __name__ == "__main__":
     import time
+    logging.basicConfig(filename='wathamm.log', level=logging.DEBUG,
+                        format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H-%M-%S')
     stime = time.time()
-    count(500)
+    count(1000)
     t = time.time() - stime
-    print("--- {} seconds ---".format(t) )
+    logging.debug("total time {} seconds".format(t) )
