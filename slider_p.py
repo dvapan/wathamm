@@ -57,7 +57,6 @@ plt.axis([0, length, 0, p0*1.5])
 
 axcolor = 'lightgoldenrodyellow'
 axtime = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
-# axamp = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=axcolor)
 
 stime = Slider(axtime, 'Time', 0, total_time, valinit=0)
 

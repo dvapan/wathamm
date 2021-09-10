@@ -19,12 +19,12 @@ v0 = 1.0
 p0 = 10*10**6
 
 
-xreg,treg = 1,1
+xreg,treg = 3,3
 max_reg = xreg*treg
-max_poly_degree = 7
+max_poly_degree = 3
 
-pprx = 100                        # Точек на регион
-pprt = 400
+pprx = 70                        # Точек на регион
+pprt = 130
 
 totalx = xreg*pprx - xreg + 1
 totalt = treg*pprt - treg + 1
