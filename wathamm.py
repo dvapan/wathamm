@@ -8,7 +8,6 @@ from poly import mvmonos, powers
 
 import logging
 
-
 from constants import *
 import pandas as pd
 
@@ -53,10 +52,10 @@ def eq1_left(pts, cf=None):
     dpdx = mvmonoss(pts, ppwrs, 0, cff_cnt, [0, 1])
     if cf is not None:
         dpdx = dpdx.dot(cf)
-    return dpdx/1000
+    return dpdx
 
 def eq1_right(pts, cf=None):
-    v = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 0])*1000
+    v = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 0])
     dvdt = mvmonoss(pts, ppwrs, 1, cff_cnt, [1, 0])
     if cf is not None:
         v = v.dot(cf)
@@ -74,7 +73,7 @@ def eq2_right(pts, cf=None):
     if cf is not None:
         dvdx = dvdx.dot(cf)
 
-    return -c2*rho*dvdx/1000
+    return -c2*rho*dvdx
 
 def eq1(*grid_base, cf=None):
     in_pts = nodes(*grid_base)
@@ -95,12 +94,11 @@ def eq1(*grid_base, cf=None):
 
 def eq2(*grid_base, cf=None):
     in_pts = nodes(*grid_base)
-    
     monos = eq2_left(in_pts) - eq2_right(in_pts)
 
     rhs = np.full(len(monos), 0)
     if cf is None:
-        cff = np.full(len(monos), 10000)
+        cff = np.full(len(monos), 100000)
     else:
         left_bal = np.abs(eq2_left(in_pts, cf))
         right_bal = np.abs(eq2_right(in_pts, cf))
@@ -110,8 +108,14 @@ def eq2(*grid_base, cf=None):
 
     return monos, rhs, cff, ["eq2"]*len(monos)        
 
+def make_cnst_name(first, second=None):
+    cnst_name = first
+    if second != None:
+        cnst_name += "_" + name
+    return cnst_name
+    
 
-def boundary_val(val,eps, ind, *grid_base):
+def boundary_val(val,eps, ind, name=None, *grid_base):
     """
     Boundary points
     """
@@ -119,49 +123,61 @@ def boundary_val(val,eps, ind, *grid_base):
     monos = mvmonoss(sb_pts_x0, ppwrs, ind, cff_cnt)
     rhs = np.full(len(monos), val)
     cff = np.full(len(monos), eps)
-    return monos, rhs, cff, ["bnd_val"]*len(monos)        
+    return monos, rhs, cff, [make_cnst_name("bnd_val",name)]*len(monos)
 
-def boundary_fnc(fnc,eps, ind, *grid_base):
+def boundary_fnc(fnc,eps, ind, name=None, *grid_base):
     """
     Boundary points
     """
     sb_pts_x0 = nodes(*grid_base)
     monos = mvmonoss(sb_pts_x0, ppwrs, ind, cff_cnt)
     rhs = np.apply_along_axis(fnc, 1, sb_pts_x0)
+    print(rhs)
     cff = np.full(len(monos), eps)
-    return monos, rhs, cff, ["bnd_fnc"]*len(monos)        
+    return monos, rhs, cff, [make_cnst_name("bnd_fnc",name)]*len(monos)        
 
 
-def betw_blocks(pws, gind,dind, pind, eps):
+def betw_blocks(pws, gind,dind, pind, eps, name=None):
     i, j = gind
     di,dj = dind
-    if di > 0:
-        Ti1 = -1
-        Ti2 = 0
-    else:
-        Ti1 = 0
-        Ti2 = -1
     ind = make_id(i, j)
-    grid_base = T_part[i][Ti1], X_part[j]
-    ptr_bnd = nodes(*grid_base)
-    val = mvmonoss(ptr_bnd, pws, pind, cff_cnt)
-    val = shifted(val, ind)
-
-    ni, nj = i+di, j
-    indn = make_id(ni, nj)
-    grid_basen = T_part[ni][Ti2], X_part[nj]
-    ptr_bndn = nodes(*grid_basen)
-    valn = mvmonoss(ptr_bndn, pws, pind, cff_cnt)
-    valn = shifted(valn, indn)
-
     monos = []
-    monos.append(valn - val)
-    monos.append(val - valn)
 
+    if i < treg - 1:
+        grid_base = T_part[i][-1], X_part[j]
+        ptr_bnd = nodes(*grid_base)
+        val = mvmonoss(ptr_bnd, pws, pind, cff_cnt)
+        val = shifted(val, ind)
+
+        ni, nj = i+di, j
+        indn = make_id(ni, nj)
+        grid_basen = T_part[ni][0], X_part[nj]
+        ptr_bndn = nodes(*grid_basen)
+        valn = mvmonoss(ptr_bndn, pws, pind, cff_cnt)
+        valn = shifted(valn, indn)
+
+        monos.append(valn - val)
+        monos.append(val - valn)
+    if j < xreg - 1:
+        grid_base = T_part[i], X_part[j][-1]
+        ptr_bnd = nodes(*grid_base)
+        val = mvmonoss(ptr_bnd, pws, pind, cff_cnt)
+        val = shifted(val, ind)
+
+        ni, nj = i, j+dj
+        indn = make_id(ni, nj)
+        grid_basen = T_part[ni], X_part[nj][0]
+    
+        ptr_bndn = nodes(*grid_basen)
+        valn = mvmonoss(ptr_bndn, pws, pind, cff_cnt)
+        valn = shifted(valn, indn)
+
+        monos.append(valn - val)
+        monos.append(val - valn)
     monos = np.vstack(monos)
     rhs = np.full(len(monos), 0)
-    cff = np.full(len(monos), 1)
-    return monos, rhs, cff
+    cff = np.full(len(monos), eps)
+    return monos, rhs, cff, [make_cnst_name("betw_blocks",name)]*len(monos)        
 
 
 
@@ -182,7 +198,11 @@ def vs(pts):
         return 1 - 1/k*t
     else:
         return 0
-        
+
+def ps(pts):
+    t,x = pts
+    return p0 - rho*v0*lmd/(2*d)*x
+
 i = 1
 
 
@@ -205,9 +225,8 @@ def count_points(poly_coeff=None):
                 cnst_type.append(t)
 
     for i in range(treg):    
-        m,r,c,t = boundary_fnc(vs,0.03, 1, T_part[i],X_part[xreg - 1][-1])
-        # m,r,c = boundary_val(v0,0.01, 1, T_part[i],X_part[xreg - 1][-1])
-        ind = make_id(i, 0)
+        m,r,c,t = boundary_fnc(vs,0.01, 1, T_part[i],X_part[xreg - 1][-1])
+        ind = make_id(i, xreg-1)
         m = shifted(m, ind)
         monos.append(m)
         rhs.append(r)
@@ -215,7 +234,9 @@ def count_points(poly_coeff=None):
         cnst_type.append(t)
         
     for j in range(xreg):
-        m,r,c,t = boundary_val(p0,10000, 0, T_part[0][0], X_part[j])
+        m,r,c,t = boundary_fnc(ps,10000, 0, T_part[0][0], X_part[j])
+#        m,r,c,t = boundary_val(p0,100000, 0, T_part[0][0], X_part[j])
+
         ind = make_id(0, j)
         m = shifted(m, ind)
         monos.append(m)
@@ -234,29 +255,29 @@ def count_points(poly_coeff=None):
 
         
     for j in range(xreg):
-        m,r,c,t = boundary_val(v0,0.03, 1, T_part[0][0], X_part[j])
+        m,r,c,t = boundary_val(v0,0.01, 1, T_part[0][0], X_part[j])
         ind = make_id(0, j)
         m = shifted(m, ind)
         monos.append(m)
         rhs.append(r)
         cff.append(c)
         cnst_type.append(t)
-    
-    print(monos[-1].shape)
-    print("*"*10)
-    conditions = []
-    for i in range(treg - 1):
-        for j in range(xreg - 1):
-            #pressure connect blocks
-            conditions.append(betw_blocks(ppwrs, (i, j),(1,1), 0, 10000))
-            #velocity connect blocks
-            conditions.append(betw_blocks(ppwrs, (i, j),(1,1), 1, 0.03))
 
-    for m, r, c in conditions:
-        print(m.shape)
+
+        
+    conditions = []
+    for i in range(treg):
+        for j in range(xreg):
+            if i < treg - 1 or j < xreg - 1:
+                #pressure connect blocks
+                conditions.append(betw_blocks(ppwrs, (i, j),(1,1), 0, 10000))
+                #velocity connect blocks
+                conditions.append(betw_blocks(ppwrs, (i, j),(1,1), 1, 0.01))
+    for m, r, c,t in conditions:
         monos.append(m)
         rhs.append(r)
         cff.append(c)
+        cnst_type.append(t)
 
     monos = np.vstack(monos)
     rhs = np.hstack(rhs) 
@@ -289,12 +310,12 @@ def solve_simplex(A, rhs, ct=None, logLevel=0):
     logging.debug(f"TASK SIZE XCOUNT: {lp_dim} GXCOUNT: {len(rhs)}")
 
     s.primal()
-    k = list(s.primalConstraintSolution.keys())
-    k2 =list(s.dualConstraintSolution.keys())
-    q = s.dualConstraintSolution[k2[0]]
+    k = list(s.primalConstraintSolution.keys())[0]
+    k2 =list(s.dualConstraintSolution.keys())[0]
+    q = s.dualConstraintSolution[k2]
     logging.debug(f"{s.getStatusString()} objective: {s.objectiveValue}")
-    logging.debug(f"nonzeros rhs: {np.count_nonzero(s.primalConstraintSolution[k[0]])}")
-    logging.debug(f"nonzeros dual: {np.count_nonzero(s.dualConstraintSolution[k2[0]])}")
+    logging.debug(f"nonzeros rhs: {np.count_nonzero(s.primalConstraintSolution[k])}")
+    logging.debug(f"nonzeros dual: {np.count_nonzero(s.dualConstraintSolution[k2])}")
 
     if ct is not None:
         data = {
@@ -321,8 +342,6 @@ def count(num_cnst_add=None, eps=0.01):
     ofile = sys.argv[1]
 
     monos, rhs, ct = count_points(poly_coeff=pc)
-    num_cnst_add = len(monos[0])*4
-    print("###############",num_cnst_add)
 
 
     ct = np.hstack([ct,ct])
@@ -337,7 +356,8 @@ def count(num_cnst_add=None, eps=0.01):
 
     rhs = np.hstack([rhs,-rhs])
 
-    m1 = lp_dim*2
+    m1 = lp_dim*1
+    num_cnst_add = m1
 
     indeces = np.random.choice(len(A), m1, replace=False)
 
@@ -367,7 +387,7 @@ def count(num_cnst_add=None, eps=0.01):
             run = False
             break
 
-        num_cnst_add = max(num_cnst_add, int(np.round(len(task_A)*0.15)))
+        num_cnst_add = max(num_cnst_add, int(np.round(len(task_A)*0.05)))
         num_cnst_add = min(num_cnst_add, len(otkl[otkl < -eps]))
         logging.debug(f"num_cnst_add: {num_cnst_add}")
 
@@ -439,15 +459,13 @@ def count_base(num_cnst_add=None, eps=0.01):
 
     task_rhs = np.hstack([rhs,-rhs])
 
-
     stime = time.time()
 
-    outx = solve_simplex(task_A, task_rhs, logLevel=1)
+    outx = solve_simplex(task_A, task_rhs, ct=ct, logLevel=1)
     t = time.time() - stime
 
-    ofile += f"p{max_poly_degree}"
+    ofile += f"p{max_poly_degree}xr{xreg}tr{treg}"
     np.savetxt(ofile, outx)
-    print(outx)
 
 
 
@@ -471,9 +489,9 @@ def test():
 
 if __name__ == "__main__":
     import time
-    logging.basicConfig(level=logging.DEBUG,
+    logging.basicConfig(filename="wathamm.log",level=logging.DEBUG,
                         format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H-%M-%S')
     stime = time.time()
-    count_base()
+    count()
     t = time.time() - stime
     logging.debug("total time {} seconds".format(t) )

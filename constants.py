@@ -1,30 +1,29 @@
 import numpy as np
 import more_itertools as mit
 
-length = 1.4                     # Длина трубы          [м]
-total_time = 0.8                          # Время расчета      [с]
-timeclose = 0.5                     # Время закрытия от общего времени
+length = 1400                     # Длина трубы          [kм]
+total_time = 4                          # Время расчета      [с]
+timeclose = 0.2                     # Время закрытия от общего времени
 d = 0.5
 delta = 0.2
 rho = 1000
-K = 2030*10**6 
+K = 2030*10**6
 E = 200000*10**6
 
-lmd = 0*0.00558
+lmd = 0.6  # 1*0.0558
 
 c2 = 1/(rho/K + (rho*d)/(delta*E))
-
 
 v0 = 1.0
 p0 = 10*10**6
 
 
-xreg,treg = 3,3
+xreg,treg = 6,12
 max_reg = xreg*treg
 max_poly_degree = 3
 
-pprx = 70                        # Точек на регион
-pprt = 130
+pprx = 20                      # Точек на регион
+pprt = 40
 
 totalx = xreg*pprx - xreg + 1
 totalt = treg*pprt - treg + 1
@@ -44,4 +43,3 @@ index_info = 0
 cnt_var = 0
 
 epsilon = 1
-
