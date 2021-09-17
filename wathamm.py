@@ -115,7 +115,7 @@ def make_cnst_name(first, second=None):
     return cnst_name
     
 
-def boundary_val(val,eps, ind, name=None, *grid_base):
+def boundary_val(val,eps, ind, *grid_base, name=None):
     """
     Boundary points
     """
@@ -125,7 +125,7 @@ def boundary_val(val,eps, ind, name=None, *grid_base):
     cff = np.full(len(monos), eps)
     return monos, rhs, cff, [make_cnst_name("bnd_val",name)]*len(monos)
 
-def boundary_fnc(fnc,eps, ind, name=None, *grid_base):
+def boundary_fnc(fnc,eps, ind,  *grid_base, name=None):
     """
     Boundary points
     """
@@ -265,19 +265,19 @@ def count_points(poly_coeff=None):
 
 
         
-    conditions = []
-    for i in range(treg):
-        for j in range(xreg):
-            if i < treg - 1 or j < xreg - 1:
-                #pressure connect blocks
-                conditions.append(betw_blocks(ppwrs, (i, j),(1,1), 0, 10000))
-                #velocity connect blocks
-                conditions.append(betw_blocks(ppwrs, (i, j),(1,1), 1, 0.01))
-    for m, r, c,t in conditions:
-        monos.append(m)
-        rhs.append(r)
-        cff.append(c)
-        cnst_type.append(t)
+    # conditions = []
+    # for i in range(treg):
+    #     for j in range(xreg):
+    #         if i < treg - 1 or j < xreg - 1:
+    #             #pressure connect blocks
+    #             conditions.append(betw_blocks(ppwrs, (i, j),(1,1), 0, 10000))
+    #             #velocity connect blocks
+    #             conditions.append(betw_blocks(ppwrs, (i, j),(1,1), 1, 0.01))
+    # for m, r, c,t in conditions:
+    #     monos.append(m)
+    #     rhs.append(r)
+    #     cff.append(c)
+    #     cnst_type.append(t)
 
     monos = np.vstack(monos)
     rhs = np.hstack(rhs) 
@@ -297,7 +297,6 @@ def solve_simplex(A, rhs, ct=None, logLevel=0):
     s.logLevel = logLevel
     lp_dim = A.shape[1] 
 
-   
     x = s.addVariable('x', lp_dim)
     A = np.matrix(A)
     rhs = CyLPArray(rhs)
@@ -358,11 +357,18 @@ def count(num_cnst_add=None, eps=0.01):
 
     m1 = lp_dim*1
     num_cnst_add = m1
+    fix_idx = np.any(np.vstack([ct=="bnd_fnc",ct == "bnd_val"]), axis=0)
+    fixed_points = A[fix_idx][::2]
+    nonfixed_points = A[~fix_idx]
 
-    indeces = np.random.choice(len(A), m1, replace=False)
+    nfix_idx = np.random.choice(len(nonfixed_points), num_cnst_add, replace=False)
+    nonfixed_points = nonfixed_points[nfix_idx]
 
-    task_A = A[indeces]
-    task_rhs = rhs[indeces]
+    print(fixed_points.shape)
+    print(nonfixed_points.shape)
+
+    task_A = np.vstack([fixed_points,nonfixed_points])
+    task_rhs = np.hstack([rhs[fix_idx][::2], rhs[nfix_idx]])
 
     run = True
     itnum = 0
@@ -462,6 +468,7 @@ def count_base(num_cnst_add=None, eps=0.01):
     stime = time.time()
 
     outx = solve_simplex(task_A, task_rhs, ct=ct, logLevel=1)
+
     t = time.time() - stime
 
     ofile += f"p{max_poly_degree}xr{xreg}tr{treg}"
