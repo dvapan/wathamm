@@ -132,7 +132,6 @@ def boundary_fnc(fnc,eps, ind,  *grid_base, name=None):
     sb_pts_x0 = nodes(*grid_base)
     monos = mvmonoss(sb_pts_x0, ppwrs, ind, cff_cnt)
     rhs = np.apply_along_axis(fnc, 1, sb_pts_x0)
-    print(rhs)
     cff = np.full(len(monos), eps)
     return monos, rhs, cff, [make_cnst_name("bnd_fnc",name)]*len(monos)        
 
@@ -225,7 +224,7 @@ def count_points(poly_coeff=None):
                 cnst_type.append(t)
 
     for i in range(treg):    
-        m,r,c,t = boundary_fnc(vs,0.01, 1, T_part[i],X_part[xreg - 1][-1])
+        m,r,c,t = boundary_fnc(vs,0.1, 1, T_part[i],X_part[xreg - 1][-1])
         ind = make_id(i, xreg-1)
         m = shifted(m, ind)
         monos.append(m)
@@ -234,7 +233,7 @@ def count_points(poly_coeff=None):
         cnst_type.append(t)
         
     for j in range(xreg):
-        m,r,c,t = boundary_fnc(ps,10000, 0, T_part[0][0], X_part[j])
+        m,r,c,t = boundary_fnc(ps,20000, 0, T_part[0][0], X_part[j])
 #        m,r,c,t = boundary_val(p0,100000, 0, T_part[0][0], X_part[j])
 
         ind = make_id(0, j)
@@ -245,7 +244,7 @@ def count_points(poly_coeff=None):
         cnst_type.append(t)
 
     for i in range(treg):
-        m,r,c,t = boundary_val(p0,10000, 0, T_part[i], X_part[0][0])
+        m,r,c,t = boundary_val(p0,20000, 0, T_part[i], X_part[0][0])
         ind = make_id(i, 0)
         m = shifted(m, ind)
         monos.append(m)
@@ -255,7 +254,7 @@ def count_points(poly_coeff=None):
 
         
     for j in range(xreg):
-        m,r,c,t = boundary_val(v0,0.01, 1, T_part[0][0], X_part[j])
+        m,r,c,t = boundary_val(v0,0.1, 1, T_part[0][0], X_part[j])
         ind = make_id(0, j)
         m = shifted(m, ind)
         monos.append(m)
@@ -265,19 +264,19 @@ def count_points(poly_coeff=None):
 
 
         
-    # conditions = []
-    # for i in range(treg):
-    #     for j in range(xreg):
-    #         if i < treg - 1 or j < xreg - 1:
-    #             #pressure connect blocks
-    #             conditions.append(betw_blocks(ppwrs, (i, j),(1,1), 0, 10000))
-    #             #velocity connect blocks
-    #             conditions.append(betw_blocks(ppwrs, (i, j),(1,1), 1, 0.01))
-    # for m, r, c,t in conditions:
-    #     monos.append(m)
-    #     rhs.append(r)
-    #     cff.append(c)
-    #     cnst_type.append(t)
+    conditions = []
+    for i in range(treg):
+        for j in range(xreg):
+            if i < treg - 1 or j < xreg - 1:
+                #pressure connect blocks
+                conditions.append(betw_blocks(ppwrs, (i, j),(1,1), 0, 10000))
+                #velocity connect blocks
+                conditions.append(betw_blocks(ppwrs, (i, j),(1,1), 1, 0.01))
+    for m, r, c,t in conditions:
+        monos.append(m)
+        rhs.append(r)
+        cff.append(c)
+        cnst_type.append(t)
 
     monos = np.vstack(monos)
     rhs = np.hstack(rhs) 
@@ -327,8 +326,53 @@ def solve_simplex(A, rhs, ct=None, logLevel=0):
         df.to_csv('out.csv', header = True, index = False)
 
     
-    return s.primalVariableSolution['x']
+    return s.primalVariableSolution['x'],s.primalConstraintSolution[k],s.dualConstraintSolution[k2]
 
+
+def solve_new(eps=0.01):
+    import os.path
+    import sys
+    # if os.path.isfile("test_cff"):
+    #     pc = np.loadtxt("test_cff")    
+    # else:
+    #     pc = None
+    pc = None
+    ofile = sys.argv[1]
+
+    monos, rhs, ct = count_points(poly_coeff=pc)
+
+    ct = np.hstack([ct,ct])
+    
+    lp_dim = monos.shape[1] + 1
+    ones = np.ones((len(monos),1))
+
+    
+    A1 = np.hstack([monos, ones])
+    A2 = np.hstack([-monos, ones])
+    A = np.vstack([A1,A2])
+
+    rhs = np.hstack([rhs,-rhs])
+
+    m1 = lp_dim*1
+    num_cnst_add = m1
+    fix_idx = np.any(np.vstack([ct=="bnd_fnc",ct == "bnd_val",ct == "betw_blocks"]), axis=0)
+    fixed_points = A[fix_idx][::2]
+    nonfixed_points = A[~fix_idx]
+
+    nfix_idx = np.random.choice(len(nonfixed_points), num_cnst_add, replace=False)
+    nonfixed_points = nonfixed_points[nfix_idx]
+
+    print(fixed_points.shape)
+    print(nonfixed_points.shape)
+
+    task_A = np.vstack([fixed_points,nonfixed_points])
+    task_rhs = np.hstack([rhs[fix_idx][::2], rhs[nfix_idx]])
+    task_ct = np.hstack([ct[fix_idx][::2], ct[nfix_idx]])
+
+    outx = solve_simplex(task_A, task_rhs,task_ct, logLevel=1)
+
+    
+    
 
 def count(num_cnst_add=None, eps=0.01):
     import os.path
@@ -357,7 +401,7 @@ def count(num_cnst_add=None, eps=0.01):
 
     m1 = lp_dim*1
     num_cnst_add = m1
-    fix_idx = np.any(np.vstack([ct=="bnd_fnc",ct == "bnd_val"]), axis=0)
+    fix_idx = np.any(np.vstack([ct=="bnd_fnc",ct == "bnd_val",ct == "betw_blocks"]), axis=0)
     fixed_points = A[fix_idx][::2]
     nonfixed_points = A[~fix_idx]
 
@@ -388,6 +432,7 @@ def count(num_cnst_add=None, eps=0.01):
         logging.debug(f"count otkl < -{eps}: {len(otkl[otkl < -eps])} / {len(otkl)}")
         # logging.debug(f"count active constraints {len()}")
         logging.debug(f"fx: {outx[-1]} {otkl[i]}")
+        logging.debug(f"type cnst {ct[i]}")
 
         if abs(np.min(otkl)) < eps:
             run = False
@@ -402,7 +447,6 @@ def count(num_cnst_add=None, eps=0.01):
         worst_rhs = rhs[otkl.argsort()][:num_cnst_add]
 
         otkl = np.dot(task_A,outx) - task_rhs
-
         
         nact_A = task_A[abs(otkl) >= eps]
         nact_rhs = task_rhs[abs(otkl) >= eps]
@@ -429,9 +473,6 @@ def count(num_cnst_add=None, eps=0.01):
         task_rhs = np.hstack([task_rhs, worst_rhs])
 
         # otkl = np.dot(task_A,outx) - task_rhs
-
-        
-        
 
     ofile += f"p{max_poly_degree}"
     np.savetxt(ofile, outx)
@@ -499,6 +540,6 @@ if __name__ == "__main__":
     logging.basicConfig(filename="wathamm.log",level=logging.DEBUG,
                         format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H-%M-%S')
     stime = time.time()
-    count()
+    solve_new()
     t = time.time() - stime
     logging.debug("total time {} seconds".format(t) )
