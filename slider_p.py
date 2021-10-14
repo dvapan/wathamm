@@ -13,11 +13,11 @@ from constants import *
 
 import matplotlib.pyplot as plt
 
-from wathamm import boundary_fnc
+from model import boundary_fnc
 
-from wathamm import eq1_left, eq1_right
-from wathamm import eq2_left, eq2_right
-from wathamm import make_id, psize
+from model import eq1_left, eq1_right
+from model import eq2_left, eq2_right
+from model import make_id, psize
 
 filename = sys.argv[1]
 
