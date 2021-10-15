@@ -4,6 +4,9 @@ from numpy.linalg import det
 
 from .simplex import solve as solve_simplex
 
+import logging
+
+
 def count_next_iter_cycle(outx, worst_A, worst_rhs, ds):
     minf_ind= 0
     maxf_ind = 0
@@ -19,7 +22,7 @@ def count_next_iter_cycle(outx, worst_A, worst_rhs, ds):
             if u < 0: continue
             x = u*ds[s] + outx
             f = x[-1]
-            # print(u,ds[s][-1],outx[-1])
+            print(u,ds[s][-1],outx[-1])
             if f <= minf:
                 minf = f
                 minf_ind = s
@@ -37,21 +40,25 @@ def count_next_iter_cycle(outx, worst_A, worst_rhs, ds):
     return outx, max_min_ind, maxf_ind
 
 def count_next_iter(outx, worst_A, worst_rhs, ds):
+    logging.debug("upper")
     upper = np.sum(worst_A*outx,axis=1) - worst_rhs
-    down = np.sum(worst_A[:,None]* ds, axis=2)
-    upper = np.tile(upper,(len(outx),1)).T
-    u_ls = - np.hstack(upper / down)
-    del upper
-    del down
-    u_ls[u_ls<0] = np.nan
+    logging.debug("down")
+    minf_inds = np.zeros(len(worst_A))
+    minf = np.zeros(len(worst_A))
+    for i in range(len(worst_A)):
+        down = np.sum(worst_A[i]* ds, axis=1)
+        logging.debug("u_ls")
+        u_ls = - upper[i] / down
+        u_ls[u_ls<0] = np.nan
 
-    ds = np.tile(ds,(len(worst_A),1))
-    x_ls = np.tile(u_ls,(len(outx),1)).T*ds + outx
-
-    f_ls = x_ls[:,-1].reshape(-1,len(outx))
-    minf_inds = np.nanargmin(f_ls,axis = 1)
-    test = np.nanmin(f_ls,axis = 1)
-    maxf_ind = np.nanargmax(test)
+        logging.debug("ext ds")
+        ds = np.tile(ds,(len(worst_A),1))
+        logging.debug("x_ls")
+        x_ls = u_ls*ds + outx
+        f_ls = x_ls[:,-1]
+        minf_inds[i] = np.nanargmin(f_ls)
+        minf[i] = np.nanmin(f_ls)
+    maxf_ind = np.nanargmax(minf)
     max_min_ind=minf_inds[maxf_ind]
     print(np.nanmax(test), f_ls[maxf_ind,max_min_ind], f_ls[maxf_ind,max_min_ind] - outx[-1])
     ind_remove = max_min_ind
@@ -109,15 +116,20 @@ def solve(A, rhs, eps=0.01, next_iter=count_next_iter, ct=None):
         # print(xs[0])
         print((np.dot(act_A, outx) - act_b))
 
+        logging.debug("resd")
         resd = np.dot(A,outx) - rhs
         print(np.min(resd), np.max(resd))
         if abs(np.min(resd)) < 1e-10:
             run = False
             break
+        logging.debug("worst_A")
         worst_A = A[resd.argsort()][:2000]#[:m1*2]
+        logging.debug("worst_rhs")
         worst_rhs = rhs[resd.argsort()][:2000]#[:m1*2]
 
+        logging.debug("start_iter_count")
         outx,ind_remove, ind_insert = next_iter(outx, worst_A, worst_rhs, ds)
+        logging.debug("finish_iter_count")
 
         act_A = np.delete(act_A, ind_remove, 0)
         act_b = np.delete(act_b, ind_remove)

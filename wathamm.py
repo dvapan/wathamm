@@ -36,9 +36,6 @@ def count(eps=0.01):
     print("result:",outx[-1])
     np.savetxt(ofile, outx)
 
-
-
-
 if __name__ == "__main__":
     # import sys
     # np.set_printoptions(threshold=sys.maxsize)
