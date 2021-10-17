@@ -40,34 +40,30 @@ def count_next_iter_cycle(outx, worst_A, worst_rhs, ds):
     return outx, max_min_ind, maxf_ind
 
 def count_next_iter(outx, worst_A, worst_rhs, ds):
-    logging.debug("upper")
     upper = np.sum(worst_A*outx,axis=1) - worst_rhs
-    logging.debug("down")
-    minf_inds = np.zeros(len(worst_A))
+    minf_inds = np.zeros(len(worst_A),dtype=np.int)
     minf = np.zeros(len(worst_A))
+    xs = np.zeros((len(worst_A),len(outx)))
     for i in range(len(worst_A)):
         down = np.sum(worst_A[i]* ds, axis=1)
-        logging.debug("u_ls")
         u_ls = - upper[i] / down
         u_ls[u_ls<0] = np.nan
 
-        logging.debug("ext ds")
-        ds = np.tile(ds,(len(worst_A),1))
-        logging.debug("x_ls")
         x_ls = u_ls*ds + outx
         f_ls = x_ls[:,-1]
-        minf_inds[i] = np.nanargmin(f_ls)
-        minf[i] = np.nanmin(f_ls)
+        minf_inds[i] = np.argmin(f_ls)
+        minf[i] = np.min(f_ls)
+        xs[i] = x_ls[minf_inds[i]]
     maxf_ind = np.nanargmax(minf)
     max_min_ind=minf_inds[maxf_ind]
-    print(np.nanmax(test), f_ls[maxf_ind,max_min_ind], f_ls[maxf_ind,max_min_ind] - outx[-1])
+    # print(np.nanmax(minf), f_ls[maxf_ind,max_min_ind], f_ls[maxf_ind,max_min_ind] - outx[-1])
     ind_remove = max_min_ind
-    print(minf_inds)
-    print("-----------", ds[max_min_ind][-1])
-    print("-----------", u_ls[maxf_ind*len(outx) + max_min_ind])
-    print("-----------", outx[-1],ds[max_min_ind][-1]* u_ls[maxf_ind*len(outx) + max_min_ind])
+    # print(minf_inds)
+    # print("-----------", ds[max_min_ind][-1])
+    # print("-----------", u_ls[maxf_ind*len(outx) + max_min_ind])
+    # print("-----------", outx[-1],ds[max_min_ind][-1]* u_ls[maxf_ind*len(outx) + max_min_ind])
 
-    outx = x_ls[maxf_ind*len(outx) + max_min_ind]
+    outx = xs[max_min_ind]
 
     return outx, max_min_ind, maxf_ind
 
@@ -123,9 +119,9 @@ def solve(A, rhs, eps=0.01, next_iter=count_next_iter, ct=None):
             run = False
             break
         logging.debug("worst_A")
-        worst_A = A[resd.argsort()][:2000]#[:m1*2]
+        worst_A = A[resd.argsort()][:100]#[:m1*2]
         logging.debug("worst_rhs")
-        worst_rhs = rhs[resd.argsort()][:2000]#[:m1*2]
+        worst_rhs = rhs[resd.argsort()][:100]#[:m1*2]
 
         logging.debug("start_iter_count")
         outx,ind_remove, ind_insert = next_iter(outx, worst_A, worst_rhs, ds)
