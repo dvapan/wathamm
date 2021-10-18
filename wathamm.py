@@ -4,6 +4,7 @@ from model import count_points
 import solvers.simplex as simplex
 import solvers.solve_constractions_cone as constr_cone
 
+from scipy.sparse import csr_matrix
 
 
 def count(eps=0.01):

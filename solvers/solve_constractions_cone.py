@@ -2,6 +2,8 @@ import numpy as np
 from numpy.linalg import inv
 from numpy.linalg import det
 
+# from scipy.sparse import csr_matrix
+# from scipy.sparse.linalg import inv
 from .simplex import solve as solve_simplex
 
 import logging
@@ -22,7 +24,7 @@ def count_next_iter_cycle(outx, worst_A, worst_rhs, ds):
             if u < 0: continue
             x = u*ds[s] + outx
             f = x[-1]
-            print(u,ds[s][-1],outx[-1])
+            # print(u,ds[s][-1],outx[-1])
             if f <= minf:
                 minf = f
                 minf_ind = s
@@ -34,75 +36,91 @@ def count_next_iter_cycle(outx, worst_A, worst_rhs, ds):
             max_x = min_x
 
 
-    print(maxf)
+    # print(maxf)
     ind_remove, ind_insert = maxf_ind,max_min_ind
     outx = max_x
     return outx, max_min_ind, maxf_ind
 
 def count_next_iter(outx, worst_A, worst_rhs, ds):
     upper = np.sum(worst_A*outx,axis=1) - worst_rhs
-    minf_inds = np.zeros(len(worst_A),dtype=np.int)
-    minf = np.zeros(len(worst_A))
-    xs = np.zeros((len(worst_A),len(outx)))
-    for i in range(len(worst_A)):
+    minf_inds = np.zeros(worst_A.shape[0],dtype=np.int)
+    minf = np.zeros(worst_A.shape[0])
+    xs = np.zeros((worst_A.shape[0],len(outx)))
+    for i in range(worst_A.shape[0]):
         down = np.sum(worst_A[i]* ds, axis=1)
         u_ls = - upper[i] / down
-        u_ls[u_ls<0] = np.nan
 
-        x_ls = u_ls*ds + outx
+        u_ls[u_ls < 0] = np.nan
+        # print(u_ls.shape)
+        # print(ds.shape)
+
+        # print("u_ls")
+        # print(u_ls)
+        # print("ds")
+        # print(ds)
+        # print("u_ls*ds")
+        # print(u_ls*ds)
+
+        x_ls = np.tile(u_ls,(ds.shape[0],1)).T*ds + outx
         f_ls = x_ls[:,-1]
+
         minf_inds[i] = np.argmin(f_ls)
         minf[i] = np.min(f_ls)
         xs[i] = x_ls[minf_inds[i]]
     maxf_ind = np.nanargmax(minf)
     max_min_ind=minf_inds[maxf_ind]
     # print(np.nanmax(minf), f_ls[maxf_ind,max_min_ind], f_ls[maxf_ind,max_min_ind] - outx[-1])
-    ind_remove = max_min_ind
     # print(minf_inds)
     # print("-----------", ds[max_min_ind][-1])
     # print("-----------", u_ls[maxf_ind*len(outx) + max_min_ind])
     # print("-----------", outx[-1],ds[max_min_ind][-1]* u_ls[maxf_ind*len(outx) + max_min_ind])
 
-    outx = xs[max_min_ind]
+    outx = xs[maxf_ind]
 
     return outx, max_min_ind, maxf_ind
 
 
-def solve(A, rhs, eps=0.01, next_iter=count_next_iter, ct=None):
+def solve(A, rhs, eps=0.01, next_iter=count_next_iter_cycle, ct=None):
     is_basis_matrix_square = False
-    lp_dim = len(A[0])
+    lp_dim = A.shape[1]
     while not is_basis_matrix_square:
         m1 = lp_dim*1
-        num_cnst_add = m1
-        fix_idx = np.any(np.vstack([ct=="bnd_fnc",ct == "bnd_val",ct == "betw_blocks"]), axis=0)
-        fixed_points = A[fix_idx][::2]
-        nonfixed_points = A[~fix_idx]
+        num_cnst_add = m1*10
+        # fix_idx = np.any(np.vstack([ct=="bnd_fnc",ct == "bnd_val",ct == "betw_blocks"]), axis=0)
+        # fixed_points = A[fix_idx][::2]
+        # nonfixed_points = A[~fix_idx]
 
-        nfix_idx = np.random.choice(len(nonfixed_points), num_cnst_add, replace=False)
-        nonfixed_points = nonfixed_points[nfix_idx]
+        # nfix_idx = np.random.choice(len(nonfixed_points), num_cnst_add, replace=False)
+        # nonfixed_points = nonfixed_points[nfix_idx]
 
-        task_A = np.vstack([fixed_points,nonfixed_points])
-        task_rhs = np.hstack([rhs[fix_idx][::2], rhs[nfix_idx]])
-        task_ct = np.hstack([ct[fix_idx][::2], ct[nfix_idx]])
+        # task_A = np.vstack([fixed_points,nonfixed_points])
+        # task_rhs = np.hstack([rhs[fix_idx][::2], rhs[nfix_idx]])
+        # task_ct = np.hstack([ct[fix_idx][::2], ct[nfix_idx]])
+        nfix_idx = np.random.choice(A.shape[0], num_cnst_add, replace=False)
+        task_A = A[nfix_idx]
+        task_rhs = rhs[nfix_idx]
 
         outx,cnst,lmd = solve_simplex(task_A, task_rhs,ct=None, logLevel=1, extnd=True)
 
         if np.count_nonzero(lmd) == len(outx):
             is_basis_matrix_square = True
 
-
-    A /= 1e10
-    rhs /= 1e10
+    scal = 1e5
+    A /= scal
+    rhs /= scal
     act_A = task_A[lmd != 0]
     act_b = task_rhs[lmd != 0]
-    act_A /= 1e10
-    act_b /= 1e10
+    act_A /= scal
+    act_b /= scal
     run = True
+    iter = 0
     while run:
+        iter += 1
+        logging.info(f"iteration {iter}")
         inv_A = inv(act_A)
 
-        print("DET(A) ",det(act_A))
-        print("DET(INV(A)) ",det(inv_A))
+        logging.debug(f"DET(A) {det(act_A)}")
+        logging.debug(f"DET(INV(A)) {det(inv_A)}")
 
         dss = np.eye(len(outx))
         d = dss + act_b
@@ -110,23 +128,25 @@ def solve(A, rhs, eps=0.01, next_iter=count_next_iter, ct=None):
         ds = xs - outx
         # print(outx)
         # print(xs[0])
-        print((np.dot(act_A, outx) - act_b))
+        # print((np.dot(act_A, outx) - act_b))
 
         logging.debug("resd")
         resd = np.dot(A,outx) - rhs
-        print(np.min(resd), np.max(resd))
+        logging.info(f"{np.min(resd)} optimal: {outx[-1]}")
         if abs(np.min(resd)) < 1e-10:
             run = False
             break
         logging.debug("worst_A")
-        worst_A = A[resd.argsort()][:100]#[:m1*2]
+        ind = resd.argsort()
+        worst_A = A[ind][:1000]#[:m1*2]
         logging.debug("worst_rhs")
-        worst_rhs = rhs[resd.argsort()][:100]#[:m1*2]
+        worst_rhs = rhs[ind][:1000]#[:m1*2]
 
         logging.debug("start_iter_count")
         outx,ind_remove, ind_insert = next_iter(outx, worst_A, worst_rhs, ds)
         logging.debug("finish_iter_count")
 
+        # print((np.dot(worst_A, outx) - worst_rhs))
         act_A = np.delete(act_A, ind_remove, 0)
         act_b = np.delete(act_b, ind_remove)
         act_A = np.vstack([act_A, worst_A[ind_insert]])
