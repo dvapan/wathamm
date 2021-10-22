@@ -3,6 +3,7 @@ import logging
 from model import count_points
 import solvers.simplex as simplex
 import solvers.solve_constractions_cone as constr_cone
+import solvers.iterate_simplex as iterate_simplex
 
 from scipy.sparse import csr_matrix
 
@@ -32,7 +33,8 @@ def count(eps=0.01):
     stime = time.time()
 
     # outx = simplex.solve(task_A, task_rhs, ct=None, logLevel=1)
-    outx = constr_cone.solve(task_A, task_rhs, ct=ct)
+    # outx = constr_cone.solve(task_A, task_rhs, ct=ct)
+    outx = iterate_simplex.solve(task_A, task_rhs, ct=None, logLevel=1)
 
     print("result:",outx[-1])
     np.savetxt(ofile, outx)

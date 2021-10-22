@@ -106,8 +106,8 @@ def solve(A, rhs, eps=0.01, next_iter=count_next_iter_cycle, ct=None):
             is_basis_matrix_square = True
 
     scal = 1e5
-    A /= scal
-    rhs /= scal
+    # A /= scal
+    # rhs /= scal
     act_A = task_A[lmd != 0]
     act_b = task_rhs[lmd != 0]
     act_A /= scal
@@ -133,7 +133,7 @@ def solve(A, rhs, eps=0.01, next_iter=count_next_iter_cycle, ct=None):
         logging.debug("resd")
         resd = np.dot(A,outx) - rhs
         logging.info(f"{np.min(resd)} optimal: {outx[-1]}")
-        if abs(np.min(resd)) < 1e-10:
+        if abs(np.min(resd)) < 1e-2:
             run = False
             break
         logging.debug("worst_A")
@@ -149,8 +149,8 @@ def solve(A, rhs, eps=0.01, next_iter=count_next_iter_cycle, ct=None):
         # print((np.dot(worst_A, outx) - worst_rhs))
         act_A = np.delete(act_A, ind_remove, 0)
         act_b = np.delete(act_b, ind_remove)
-        act_A = np.vstack([act_A, worst_A[ind_insert]])
-        act_b = np.hstack([act_b, worst_rhs[ind_insert]])
+        act_A = np.vstack([act_A, worst_A[ind_insert]/scal])
+        act_b = np.hstack([act_b, worst_rhs[ind_insert]/scal])
 
 
     resd = np.dot(A,outx) - rhs
