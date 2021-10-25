@@ -6,7 +6,7 @@ import logging
 
 import pandas as pd
 
-def solve(A, rhs, ct=None, logLevel=0, extnd=False, basis=False):
+def solve(A, rhs, ct=None, logLevel=0, extnd=False, basis=False, mps_file=None):
     s = CyClpSimplex()
     s.logLevel = logLevel
     lp_dim = A.shape[1]
@@ -20,6 +20,9 @@ def solve(A, rhs, ct=None, logLevel=0, extnd=False, basis=False):
     s += x[lp_dim - 1] >= 0
     s.objective = x[lp_dim - 1]
     nnz = np.count_nonzero(A)
+    if not mps_file is None:
+        s.writeMps(mps_file)
+        return None
     logging.debug(f"TASK SIZE XCOUNT: {lp_dim} GXCOUNT: {len(rhs)}")
 
     s.primal()
