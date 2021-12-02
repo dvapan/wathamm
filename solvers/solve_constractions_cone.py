@@ -87,15 +87,15 @@ def solve(A, rhs, eps=0.01, next_iter=count_next_iter_cycle, ct=None):
         m1 = lp_dim*1
         num_cnst_add = m1*10
         # fix_idx = np.any(np.vstack([ct=="bnd_fnc",ct == "bnd_val",ct == "betw_blocks"]), axis=0)
-        # fixed_points = A[fix_idx][::2]
+        # fixed_points = A[fix_idx][::6]
         # nonfixed_points = A[~fix_idx]
 
         # nfix_idx = np.random.choice(len(nonfixed_points), num_cnst_add, replace=False)
         # nonfixed_points = nonfixed_points[nfix_idx]
 
         # task_A = np.vstack([fixed_points,nonfixed_points])
-        # task_rhs = np.hstack([rhs[fix_idx][::2], rhs[nfix_idx]])
-        # task_ct = np.hstack([ct[fix_idx][::2], ct[nfix_idx]])
+        # task_rhs = np.hstack([rhs[fix_idx][::6], rhs[nfix_idx]])
+        # task_ct = np.hstack([ct[fix_idx][::6], ct[nfix_idx]])
         nfix_idx = np.random.choice(A.shape[0], num_cnst_add, replace=False)
         task_A = A[nfix_idx]
         task_rhs = rhs[nfix_idx]
@@ -105,7 +105,7 @@ def solve(A, rhs, eps=0.01, next_iter=count_next_iter_cycle, ct=None):
         if np.count_nonzero(lmd) == len(outx):
             is_basis_matrix_square = True
 
-    scal = 1e5
+    scal = 1e10
     # A /= scal
     # rhs /= scal
     act_A = task_A[lmd != 0]
