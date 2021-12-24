@@ -135,6 +135,12 @@ tmp
 *.pdf
 .directory
 
+*.txt
+*.vec
+*.mps
+*.mtx
+xdata
+
 test_cff*
 cff*
 block_cff*
