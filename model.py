@@ -170,7 +170,6 @@ def betw_blocks(pws, gind,dind, pind, eps, name=None):
     return monos, rhs, cff, [make_cnst_name("betw_blocks",name)]*len(monos)
 
 
-
 def shifted(cffs,shift):
     pcount = len(cffs)
     psize = len(cffs[0])
@@ -178,7 +177,6 @@ def shifted(cffs,shift):
     rzeros = np.zeros((pcount, (max_reg - shift-1) * psize))
     cffs = np.hstack([lzeros,cffs,rzeros])
     return cffs
-
 
 
 def vs(pts):
@@ -212,7 +210,7 @@ def count_points(poly_coeff=None):
                 monos.append(m)
                 rhs.append(r)
                 cff.append(c)
-                cnst_type.append(t)
+                cnst_type.append([f"{q}-{j}x{i}" for q in t] )
 
     for i in range(treg):
         m,r,c,t = boundary_fnc(vs,0.1, 1, T_part[i],X_part[xreg - 1][-1])
@@ -221,7 +219,7 @@ def count_points(poly_coeff=None):
         monos.append(m)
         rhs.append(r)
         cff.append(c)
-        cnst_type.append(t)
+        cnst_type.append([f"{q}-{xreg - 1}x{i}-vel-on-bound" for q in t])
 
     for j in range(xreg):
         m,r,c,t = boundary_fnc(ps,20000, 0, T_part[0][0], X_part[j])
@@ -232,7 +230,7 @@ def count_points(poly_coeff=None):
         monos.append(m)
         rhs.append(r)
         cff.append(c)
-        cnst_type.append(t)
+        cnst_type.append([f"{q}-{j}x{0}-pressure-start-time" for q in t])
 
     for i in range(treg):
         m,r,c,t = boundary_val(p0,20000, 0, T_part[i], X_part[0][0])
@@ -241,7 +239,7 @@ def count_points(poly_coeff=None):
         monos.append(m)
         rhs.append(r)
         cff.append(c)
-        cnst_type.append(t)
+        cnst_type.append([f"{q}-{0}x{i}-pressure-start-pos" for q in t])
 
 
     for j in range(xreg):
@@ -251,7 +249,7 @@ def count_points(poly_coeff=None):
         monos.append(m)
         rhs.append(r)
         cff.append(c)
-        cnst_type.append(t)
+        cnst_type.append([f"{q}-{j}x{0}-vel-on-left-pos" for q in t])
 
 
 
@@ -260,9 +258,13 @@ def count_points(poly_coeff=None):
         for j in range(xreg):
             if i < treg - 1 or j < xreg - 1:
                 #pressure connect blocks
-                conditions.append(betw_blocks(ppwrs, (i, j),(1,1), 0, 10000))
+                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 0, 10000)
+                t = [f"{q}-{j}x{i}" for q in t]
+                conditions.append((m,r,c,t))
                 #velocity connect blocks
-                conditions.append(betw_blocks(ppwrs, (i, j),(1,1), 1, 0.01))
+                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 1, 0.01)
+                t = [f"{q}-{j}x{i}" for q in t]
+                conditions.append((m,r,c,t))
     for m, r, c,t in conditions:
         monos.append(m)
         rhs.append(r)

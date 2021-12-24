@@ -34,50 +34,50 @@ def count(eps=0.01):
 
     stime = time.time()
 
-    # logging.debug("BEGIN SAVING")
+    logging.debug("BEGIN SAVING")
 
     logging.debug("SAVING MTX")
     sp_task_A = coo_matrix(task_A)
-    # sio.mmwrite("cnstr.mtx",sp_task_A)
     rows = sp_task_A.row
     cols = sp_task_A.col
     vals = sp_task_A.data
     out = np.hstack([rows.reshape(-1, 1),
                      cols.reshape(-1, 1),
                      vals.reshape(-1, 1)])
-    np.savetxt('cnstr.smx', out, fmt="%.8g")
-    # logging.debug("SAVING RHS")
-    # # s = ("% Vector sparse form\n%\n"
-    # #      f"{len(task_rhs)} {np.count_nonzero(task_rhs)}")
-    # np.savetxt("rhs.vec", task_rhs.reshape(-1,1), fmt="%.8g")
-    from collections import Counter
-    outx, _, lmd = simplex.solve(task_A, task_rhs, ct=None, logLevel=1, extnd=True)
-    A = task_A[lmd != 0]
-    rhs = task_rhs[lmd != 0]
-    TA = abs(A) < 1.0e-5
-    TTA = np.any(TA,axis=1)
-    print(Counter(TTA))
-    print(np.nonzero(A[:,0]))
-    np.savetxt("task_A.txt",A,fmt="%.8g")
-    logging.debug("SAVING MTX")
-    sp_task_A = coo_matrix(A)
-    # sio.mmwrite("cnstr.mtx",sp_task_A)
-    rows = sp_task_A.row
-    cols = sp_task_A.col
-    vals = sp_task_A.data
-    out = np.hstack([rows.reshape(-1, 1),
-                     cols.reshape(-1, 1),
-                     vals.reshape(-1, 1)])
-    np.savetxt('A_basis.txt', out, fmt="%.8g")
-    np.savetxt('b_basis.txt', rhs.reshape(-1,1), fmt="%.8g")
-   # np.savetxt("xdata.vec", outx, fmt="%.8g")
+    np.savetxt('cnstr.txt', out, fmt="%.8g")
+    logging.debug("SAVING RHS")
+    np.savetxt("rhs.txt", task_rhs.reshape(-1,1), fmt="%.8g")
+    np.savetxt('cnstr_types.txt', ct, fmt="%s")
+
+#    from collections import Counter
+#    outx, _, lmd = simplex.solve(task_A, task_rhs, ct=None, 
+#            logLevel=1, extnd=True)
+#    A = task_A[lmd != 0]
+#    rhs = task_rhs[lmd != 0]
+#    TA = abs(A) < 1.0e-5
+#    TTA = np.any(TA,axis=1)
+#    print(Counter(TTA))
+#    print(np.nonzero(A[:,0]))
+#    np.savetxt("task_A.txt",A,fmt="%.8g")
+#    logging.debug("SAVING MTX")
+#    sp_task_A = coo_matrix(A)
+#    rows = sp_task_A.row
+#    cols = sp_task_A.col
+#    vals = sp_task_A.data
+#    out = np.hstack([rows.reshape(-1, 1),
+#                     cols.reshape(-1, 1),
+#                     vals.reshape(-1, 1)])
+#    np.savetxt('A_basis.txt', out, fmt="%.8g")
+#    np.savetxt('b_basis.txt', rhs.reshape(-1,1), fmt="%.8g")
+#    np.savetxt("xdata.vec", outx, fmt="%.8g")
 
     # outx = simplex.solve(task_A, task_rhs, ct=None, logLevel=1, mps_file=ofile)
-    # outx = constr_cone.solve(task_A, task_rhs, ct=ct) #
+#    outx = simplex.solve(task_A, task_rhs, ct=ct, logLevel=1)
+#    outx = constr_cone.solve(task_A, task_rhs, ct=ct) #
     # outx = iterate_simplex.solve(task_A, task_rhs, ct=None, logLevel=1)
 
-    # print("result:",outx[-1])
-    # np.savetxt("xdata.vec", outx)
+#    print("result:",outx[-1])
+#    np.savetxt("xdata.vec", outx)
 
 if __name__ == "__main__":
     # import sys

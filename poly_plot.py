@@ -63,8 +63,6 @@ axtime = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
 
 stime = Slider(axtime, 'Time', 0, total_time-0.001, valinit=0)
 
-
-
 def update(val):
     t = stime.val
     T = np.array([t])
