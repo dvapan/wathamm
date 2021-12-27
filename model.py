@@ -194,7 +194,10 @@ def ps(pts):
 i = 1
 
 
-def count_points(poly_coeff=None):
+def count_points(params, space, poly_coeff=None):
+    xreg = params['xreg']
+    treg = params['treg']
+    X_part, T_part = space
     monos = []
     rhs = []
     cff = []

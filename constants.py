@@ -18,32 +18,6 @@ v0 = 1.0
 p0 = 10*10**6
 
 
-xreg,treg = 6,12
-max_reg = xreg*treg
-max_poly_degree = 3
-pprx = 20                      # Точек на регион
-pprt = 20
-
-#xreg,treg = 1,1
-#max_reg = xreg*treg
-#max_poly_degree = 5
-#pprx = 5                      # Точек на регион
-#pprt = 5
-
-totalx = xreg*pprx - xreg + 1
-totalt = treg*pprt - treg + 1
-
-print("PPR:",totalx,totalt)
-
-dx = length/xreg
-dt = total_time/treg
-
-X = np.linspace(0, length, totalx)
-T = np.linspace(0, total_time, totalt)
-
-X_part = list(mit.windowed(X,n=pprx,step=pprx - 1))
-T_part = list(mit.windowed(T,n=pprt,step=pprt - 1))
-
 index_info = 0
 cnt_var = 0
 
