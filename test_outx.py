@@ -9,25 +9,10 @@ from scipy.sparse import coo_matrix
 
 
 def count(eps=0.01):
-    pc = None
+   
+    outx = np.loadtxt("xdata.txt")
 
-    monos, rhs, ct = count_points(7,7,poly_coeff=pc)
-
-    ct = np.hstack([ct,ct])
-    
-    ones = np.ones((len(monos),1))
-
-    A1 = np.hstack([monos, ones])
-    A2 = np.hstack([-monos, ones])
-    task_A = np.vstack([A1,A2])
-
-    task_rhs = np.hstack([rhs,-rhs])
-
-    stime = time.time()
-
-    outx = simplex.solve(task_A, task_rhs, ct=ct, logLevel=1)
-    
-    monos, rhs, ct = count_points(20,20,poly_coeff=pc)
+    monos, rhs, ct = count_points(30,30,poly_coeff=None)
 
     ct = np.hstack([ct,ct])
     
@@ -46,8 +31,7 @@ def count(eps=0.01):
     idx = resd.argsort()
 
     cnt = 5
-    logging.info(f"worst {cnt} residuals: {resd[idx[-cnt::-1]]}")
-    np.savetxt("xdata.txt", outx)
+    logging.info(f"worst {cnt} residuals: {resd[idx[::-1][:cnt]]}")
 
 if __name__ == "__main__":
     import time

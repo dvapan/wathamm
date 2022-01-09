@@ -1,5 +1,4 @@
 import numpy as np
-import scipy as sc
 
 from poly import mvmonos, powers
 
@@ -34,9 +33,9 @@ def make_id(i,j):
 def shifted(cffs,shift):
     pcount = len(cffs)
     psize = len(cffs[0])
-    lzeros = sc.zeros((pcount, psize * shift))
-    rzeros = sc.zeros((pcount, (max_reg - shift-1) * psize))
-    cffs = sc.hstack([lzeros,cffs,rzeros])
+    lzeros = np.zeros((pcount, psize * shift))
+    rzeros = np.zeros((pcount, (max_reg - shift-1) * psize))
+    cffs = np.hstack([lzeros,cffs,rzeros])
     return cffs
 
 def eq1_left(pts, cf=None):
@@ -127,7 +126,7 @@ def boundary_fnc(fnc,eps, ind,  *grid_base, name=None):
     return monos, rhs, cff, [make_cnst_name("bnd_fnc",name)]*len(monos)
 
 
-def betw_blocks(pws, gind,dind, pind, eps, name=None):
+def betw_blocks(pws, gind,dind, pind, eps, X_part, T_part, name=None):
     i, j = gind
     di,dj = dind
     ind = make_id(i, j)
@@ -191,14 +190,21 @@ def ps(pts):
     t,x = pts
     return p0 - rho*v0*lmd/(2*d)*x
 
-i = 1
 
-
-def count_points(poly_coeff=None):
+def count_points(pprx,pprt,poly_coeff=None):
     monos = []
     rhs = []
     cff = []
     cnst_type = []
+    totalx = xreg*pprx - xreg + 1
+    totalt = treg*pprt - treg + 1
+    X = np.linspace(0, length, totalx)
+    T = np.linspace(0, total_time, totalt)
+    X_part = list(mit.windowed(X,n=pprx,step=pprx - 1))
+    T_part = list(mit.windowed(T,n=pprt,step=pprt - 1))
+    print(pprx,pprt)
+    print(xreg, treg)
+    print(len(X_part), len(T_part))
     for i in range(treg):
         for j in range(xreg):
             conditions = (eq1(T_part[i], X_part[j], cf=poly_coeff),
@@ -258,11 +264,11 @@ def count_points(poly_coeff=None):
         for j in range(xreg):
             if i < treg - 1 or j < xreg - 1:
                 #pressure connect blocks
-                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 0, 10000)
+                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 0, 10000, X_part, T_part)
                 t = [f"{q}-{j}x{i}" for q in t]
                 conditions.append((m,r,c,t))
                 #velocity connect blocks
-                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 1, 0.01)
+                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 1, 0.01, X_part, T_part)
                 t = [f"{q}-{j}x{i}" for q in t]
                 conditions.append((m,r,c,t))
     for m, r, c,t in conditions:
