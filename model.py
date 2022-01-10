@@ -1,5 +1,4 @@
 import numpy as np
-import scipy as sc
 
 from poly import mvmonos, powers
 
@@ -34,36 +33,31 @@ def make_id(i,j):
 def shifted(cffs,shift):
     pcount = len(cffs)
     psize = len(cffs[0])
-    lzeros = sc.zeros((pcount, psize * shift))
-    rzeros = sc.zeros((pcount, (max_reg - shift-1) * psize))
-    cffs = sc.hstack([lzeros,cffs,rzeros])
+    lzeros = np.zeros((pcount, psize * shift))
+    rzeros = np.zeros((pcount, (max_reg - shift-1) * psize))
+    cffs = np.hstack([lzeros,cffs,rzeros])
     return cffs
 
 def eq1_left(pts, cf=None):
     dpdx = mvmonoss(pts, ppwrs, 0, cff_cnt, [0, 1])
-    if cf is not None:
-        dpdx = dpdx.dot(cf)
     return dpdx
 
 def eq1_right(pts, cf=None):
     v = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 0])
     dvdt = mvmonoss(pts, ppwrs, 1, cff_cnt, [1, 0])
-    if cf is not None:
-        v = v.dot(cf)
-        dvdt = dvdt.dot(cf)
-    return -rho*(dvdt + lmd*v/(2*d))
+    if cf is None:
+        v0 = np.zeros_like(v)
+    else:
+        v0 = np.tile(v.dot(cf),(len(pts),1)).T
+        print(v0)
+    return -rho*(dvdt + lmd*v0*abs(v0)/(2*d) + lmd*v/d - lmd*v0/d)
 
 def eq2_left(pts, cf=None):
     dpdt = mvmonoss(pts, ppwrs, 0, cff_cnt, [1, 0])
-    if cf is not None:
-        dpdt = dpdt.dot(cf)
     return dpdt
 
 def eq2_right(pts, cf=None):
     dvdx = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 1])
-    if cf is not None:
-        dvdx = dvdx.dot(cf)
-
     return -c2*rho*dvdx
 
 def eq1(*grid_base, cf=None):
@@ -72,14 +66,7 @@ def eq1(*grid_base, cf=None):
     monos = eq1_left(in_pts) - eq1_right(in_pts)
 
     rhs = np.full(len(monos), 0)
-    if cf is None:
-        cff = np.full(len(monos), 100)
-    else:
-        left_bal = np.abs(eq1_left(in_pts, cf))
-        right_bal = np.abs(eq1_right(in_pts, cf))
-        cff = 0.01*np.maximum(left_bal, right_bal)
-        print("eq1")
-        print(cff)
+    cff = np.full(len(monos), 100)
     return monos, rhs, cff, ["eq1"]*len(monos)
 
 
@@ -88,14 +75,7 @@ def eq2(*grid_base, cf=None):
     monos = eq2_left(in_pts) - eq2_right(in_pts)
 
     rhs = np.full(len(monos), 0)
-    if cf is None:
-        cff = np.full(len(monos), 100000)
-    else:
-        left_bal = np.abs(eq2_left(in_pts, cf))
-        right_bal = np.abs(eq2_right(in_pts, cf))
-        cff = 0.01*np.maximum(left_bal, right_bal)
-        print("eq2")
-        print(cff)
+    cff = np.full(len(monos), 100000)
 
     return monos, rhs, cff, ["eq2"]*len(monos)
 
@@ -127,7 +107,7 @@ def boundary_fnc(fnc,eps, ind,  *grid_base, name=None):
     return monos, rhs, cff, [make_cnst_name("bnd_fnc",name)]*len(monos)
 
 
-def betw_blocks(pws, gind,dind, pind, eps, name=None):
+def betw_blocks(pws, gind,dind, pind, eps, X_part, T_part, name=None):
     i, j = gind
     di,dj = dind
     ind = make_id(i, j)
@@ -147,7 +127,6 @@ def betw_blocks(pws, gind,dind, pind, eps, name=None):
         valn = shifted(valn, indn)
 
         monos.append(valn - val)
-        monos.append(val - valn)
     if j < xreg - 1:
         grid_base = T_part[i], X_part[j][-1]
         ptr_bnd = nodes(*grid_base)
@@ -163,7 +142,6 @@ def betw_blocks(pws, gind,dind, pind, eps, name=None):
         valn = shifted(valn, indn)
 
         monos.append(valn - val)
-        monos.append(val - valn)
     monos = np.vstack(monos)
     rhs = np.full(len(monos), 0)
     cff = np.full(len(monos), eps)
@@ -191,17 +169,21 @@ def ps(pts):
     t,x = pts
     return p0 - rho*v0*lmd/(2*d)*x
 
-i = 1
 
-
-def count_points(params, space, poly_coeff=None):
-    xreg = params['xreg']
-    treg = params['treg']
-    X_part, T_part = space
+def count_points(pprx,pprt,poly_coeff=None):
     monos = []
     rhs = []
     cff = []
     cnst_type = []
+    totalx = xreg*pprx - xreg + 1
+    totalt = treg*pprt - treg + 1
+    X = np.linspace(0, length, totalx)
+    T = np.linspace(0, total_time, totalt)
+    X_part = list(mit.windowed(X,n=pprx,step=pprx - 1))
+    T_part = list(mit.windowed(T,n=pprt,step=pprt - 1))
+    print(pprx,pprt)
+    print(xreg, treg)
+    print(len(X_part), len(T_part))
     for i in range(treg):
         for j in range(xreg):
             conditions = (eq1(T_part[i], X_part[j], cf=poly_coeff),
@@ -261,11 +243,11 @@ def count_points(params, space, poly_coeff=None):
         for j in range(xreg):
             if i < treg - 1 or j < xreg - 1:
                 #pressure connect blocks
-                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 0, 10000)
+                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 0, 10000, X_part, T_part)
                 t = [f"{q}-{j}x{i}" for q in t]
                 conditions.append((m,r,c,t))
                 #velocity connect blocks
-                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 1, 0.01)
+                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 1, 0.01, X_part, T_part)
                 t = [f"{q}-{j}x{i}" for q in t]
                 conditions.append((m,r,c,t))
     for m, r, c,t in conditions:

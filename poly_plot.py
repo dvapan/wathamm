@@ -21,6 +21,9 @@ from model import make_id, psize
 
 filename = sys.argv[1]
 
+pprx = int(sys.argv[2])
+pprt = int(sys.argv[3])
+
 pc = np.loadtxt(filename)
 print("Polynom approximate with: {}".format(pc[-1]))
 pc = pc[:-1]
@@ -30,6 +33,12 @@ pc = pc.reshape(-1,psize*2)
 ppwrs = powers(max_poly_degree, 2)
 psize = len(ppwrs)
 
+totalx = xreg*pprx - xreg + 1
+totalt = treg*pprt - treg + 1
+X = np.linspace(0, length, totalx)
+T = np.linspace(0, total_time, totalt)
+X_part = list(mit.windowed(X,n=pprx,step=pprx - 1))
+T_part = list(mit.windowed(T,n=pprt,step=pprt - 1))
 lxreg = X_part[0][-1] - X_part[0][0]
 ltreg = T_part[0][-1] - T_part[0][0]
 
