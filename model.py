@@ -42,15 +42,22 @@ def eq1_left(pts, cf=None):
     dpdx = mvmonoss(pts, ppwrs, 0, cff_cnt, [0, 1])
     return dpdx
 
-def eq1_right(pts, cf=None):
+def eq1_right(pts, cf=None, cfo=None):
     v = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 0])
     dvdt = mvmonoss(pts, ppwrs, 1, cff_cnt, [1, 0])
     if cf is None:
         v0 = np.zeros_like(v)
+    elif cfo is None:
+        v0 = np.zeros_like(v)
+        v0[:,psize]=v.dot(cf)*a
     else:
-        v0 = np.tile(v.dot(cf),(len(pts),1)).T
-        print(v0)
-    return -rho*(dvdt + lmd*v0*abs(v0)/(2*d) + lmd*v/d - lmd*v0/d)
+        v0 = np.zeros_like(v)
+        v_0 = v.dot(cf)
+        v_0o = v.dot(cfo)
+        tst = (v_0 - v_0o)*a + v_0o
+        v0[:,psize] = tst
+
+    return -rho*(dvdt + lmd*v0*np.abs(v0)/(2*d) + lmd*(v-v0)/d*0 )
 
 def eq2_left(pts, cf=None):
     dpdt = mvmonoss(pts, ppwrs, 0, cff_cnt, [1, 0])
@@ -60,10 +67,10 @@ def eq2_right(pts, cf=None):
     dvdx = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 1])
     return -c2*rho*dvdx
 
-def eq1(*grid_base, cf=None):
+def eq1(*grid_base, cf=None, cfo=None):
     in_pts = nodes(*grid_base)
 
-    monos = eq1_left(in_pts) - eq1_right(in_pts)
+    monos = eq1_left(in_pts) - eq1_right(in_pts,cf=cf,cfo=cfo)
 
     rhs = np.full(len(monos), 0)
     cff = np.full(len(monos), 100)
@@ -170,7 +177,7 @@ def ps(pts):
     return p0 - rho*v0*lmd/(2*d)*x
 
 
-def count_points(pprx,pprt,poly_coeff=None):
+def count_points(pprx,pprt,poly_coeff=None,pco=None):
     monos = []
     rhs = []
     cff = []
@@ -181,15 +188,22 @@ def count_points(pprx,pprt,poly_coeff=None):
     T = np.linspace(0, total_time, totalt)
     X_part = list(mit.windowed(X,n=pprx,step=pprx - 1))
     T_part = list(mit.windowed(T,n=pprt,step=pprt - 1))
-    print(pprx,pprt)
-    print(xreg, treg)
-    print(len(X_part), len(T_part))
+    bsize = sum(cff_cnt)
     for i in range(treg):
         for j in range(xreg):
-            conditions = (eq1(T_part[i], X_part[j], cf=poly_coeff),
-                          eq2(T_part[i], X_part[j], cf=poly_coeff))
-
             ind = make_id(i, j)
+            if poly_coeff is None:
+                cf = None
+                cfo = None
+            elif pco is None:
+                cf = poly_coeff[ind*bsize:(ind+1)*bsize]
+                cfo = np.zeros(bsize)
+            else:
+                cf = poly_coeff[ind*bsize:(ind+1)*bsize]
+                cfo = pco[ind*bsize:(ind+1)*bsize]
+            conditions = (eq1(T_part[i], X_part[j], cf=cf, cfo=cfo),
+                          eq2(T_part[i], X_part[j]))
+
             for m, r, c, t in conditions:
                 m = shifted(m, ind)
                 monos.append(m)

@@ -1,7 +1,7 @@
 import numpy as np
 import more_itertools as mit
 
-length = 1400                     # Длина трубы          [kм]
+length = 1400                     # Длина трубы          [м]
 total_time = 4                         # Время расчета      [с]
 timeclose = 0.125                     # Время закрытия от общего времени
 d = 0.5
@@ -34,3 +34,4 @@ index_info = 0
 cnt_var = 0
 
 epsilon = 1
+a = 0.3
