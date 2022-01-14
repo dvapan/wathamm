@@ -33,5 +33,5 @@ dt = total_time/treg
 index_info = 0
 cnt_var = 0
 
-epsilon = 1
+epsilon = 0.001
 a = 0.3

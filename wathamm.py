@@ -11,6 +11,27 @@ from scipy.sparse import coo_matrix
 
 from constants import *
 
+def test(pprx,pprt,outx):
+    monos, rhs, ct = count_points(pprx,pprt,poly_coeff=outx)
+    ct = np.hstack([ct,ct])
+
+    ones = np.ones((len(monos),1))
+
+    A1 = np.hstack([monos, ones])
+    A2 = np.hstack([-monos, ones])
+    task_A = np.vstack([A1,A2])
+
+    task_rhs = np.hstack([rhs,-rhs])
+
+    resd = np.dot(task_A,outx) - task_rhs
+    
+    idx = resd.argsort()
+
+    logging.info(f"worst residuals: {resd[idx]}")
+    logging.info(f"worst residuals: {ct[idx]}")
+    return resd[idx][0], len(resd[resd < -0.01])
+
+
 def count(params, eps=0.01):
     itcnt = 0
     outx = None
@@ -26,7 +47,7 @@ def count(params, eps=0.01):
     T_part = list(mit.windowed(T,n=pprt,step=pprt - 1))
     lxreg = X_part[0][-1] - X_part[0][0]
     ltreg = T_part[0][-1] - T_part[0][0]
-    bsize = 20
+    bsize = sum(cff_cnt)
     outx_old = None
     f = open('v.txt','w')
     f.close()
@@ -39,22 +60,35 @@ def count(params, eps=0.01):
         itcnt += 1
         logging.info(f"ITER: {itcnt}")
         stime = time.time()
-        monos, rhs, ct = count_points(pprx,pprt,poly_coeff=outx,pco=outx_old)
-
-        ct = np.hstack([ct,ct])
-    
-        ones = np.ones((len(monos),1))
-
-        A1 = np.hstack([monos, ones])
-        A2 = np.hstack([-monos, ones])
-        task_A = np.vstack([A1,A2])
-
-        task_rhs = np.hstack([rhs,-rhs])
-
+        cff_old = None
+        is_refin = True
         outx_old = outx
-        outx = simplex.solve(task_A, task_rhs, ct=ct, logLevel=1)
+        while is_refin:
+            monos, rhs, ct, cff = count_points(pprx,pprt,
+                    poly_coeff=outx,pco=outx_old)
+            ct = np.hstack([ct,ct])
+        
+            ones = np.ones((len(monos),1))
 
-        np.savetxt("xdata.txt", outx)
+            A1 = np.hstack([monos, ones])
+            A2 = np.hstack([-monos, ones])
+            task_A = np.vstack([A1,A2])
+
+            task_rhs = np.hstack([rhs,-rhs])
+
+            outx = simplex.solve(task_A, task_rhs, ct=ct, logLevel=1)
+            if cff_old is None:
+                cff_old = cff
+            else:
+                delta_cff = abs(cff - cff_old)
+                indr = np.argmax(delta_cff)
+                is_refin =  delta_cff[indr] > 0.01
+                logging.info(f"delta_cff[{indr}]: {delta_cff[indr]}")
+                logging.debug(f"{cff_old[indr]} | {cff[indr]}")
+                cff_old = cff
+        opt = test(pprx, pprt, outx)
+
+        np.savetxt(f"xdata_{itcnt}.txt", outx)
         
         v_lst = []
         p_lst = []
@@ -102,7 +136,7 @@ def count(params, eps=0.01):
         logging.debug(f"min_p: {np.min(p)}")
         v_old = v
         f = open('dv.txt','a')
-        f.write(f"{delta_v_c[indr]}\n")
+        f.write(f"{opt}\n")
         f.close()
         f = open('v.txt','a')
         f.write(f"{v}\n")
@@ -112,7 +146,7 @@ def count(params, eps=0.01):
         f.close()
         t = time.time() - stime
         logging.debug("iter time {} seconds".format(t) )
-    np.savetxt("xdata.txt", outx)
+    np.savetxt(f"xdata_{itcnt}.txt", outx)
 
 if __name__ == "__main__":
     import time

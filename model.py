@@ -38,7 +38,7 @@ def shifted(cffs,shift):
     cffs = np.hstack([lzeros,cffs,rzeros])
     return cffs
 
-def eq1_left(pts, cf=None):
+def eq1_left(pts):
     dpdx = mvmonoss(pts, ppwrs, 0, cff_cnt, [0, 1])
     return dpdx
 
@@ -57,32 +57,59 @@ def eq1_right(pts, cf=None, cfo=None):
         tst = (v_0 - v_0o)*a + v_0o
         v0[:,psize] = tst
 
-    return -rho*(dvdt + lmd*v0*np.abs(v0)/(2*d) + lmd*(v-v0)/d*0 )
+    return -rho*(dvdt + lmd*v0*np.abs(v0)/(2*d) + lmd*(v-v0)/d )
 
-def eq2_left(pts, cf=None):
+def eq2_left(pts):
     dpdt = mvmonoss(pts, ppwrs, 0, cff_cnt, [1, 0])
     return dpdt
 
-def eq2_right(pts, cf=None):
+def eq2_right(pts):
     dvdx = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 1])
     return -c2*rho*dvdx
 
 def eq1(*grid_base, cf=None, cfo=None):
     in_pts = nodes(*grid_base)
 
-    monos = eq1_left(in_pts) - eq1_right(in_pts,cf=cf,cfo=cfo)
+    if cf is None:
+        monos = eq1_left(in_pts) - eq1_right(in_pts,cf=cf,cfo=cfo)
+        rhs = np.full(len(monos), 0)
+        cff = np.full(len(monos), 100)
+    else:
+        left = eq1_left(in_pts)
+        right = eq1_right(in_pts,cf=cf,cfo=cfo)
+        monos = left - right
+        rhs = np.full(len(monos), 0)
+        lv = left.dot(cf)
+        rv = right.dot(cf)
+        lva = np.abs(lv)
+        rva = np.abs(rv)
+        svals = np.vstack([lva,rva])
+        cff = np.amax(svals,axis=0)
+        cff *= epsilon
 
-    rhs = np.full(len(monos), 0)
-    cff = np.full(len(monos), 100)
     return monos, rhs, cff, ["eq1"]*len(monos)
 
 
 def eq2(*grid_base, cf=None):
     in_pts = nodes(*grid_base)
-    monos = eq2_left(in_pts) - eq2_right(in_pts)
 
-    rhs = np.full(len(monos), 0)
-    cff = np.full(len(monos), 100000)
+    if cf is None:
+        monos = eq2_left(in_pts) - eq2_right(in_pts)
+        rhs = np.full(len(monos), 0)
+        cff = np.full(len(monos), 100000)
+    else:
+        left = eq2_left(in_pts)
+        right = eq2_right(in_pts)
+        monos = left - right
+        rhs = np.full(len(monos), 0)
+        lv = left.dot(cf)
+        rv = right.dot(cf)
+        lva = np.abs(lv)
+        rva = np.abs(rv)
+        svals = np.vstack([lva,rva])
+        cff = np.amax(svals,axis=0)
+        print(cff)
+        cff *= epsilon
 
     return monos, rhs, cff, ["eq2"]*len(monos)
 
@@ -202,7 +229,7 @@ def count_points(pprx,pprt,poly_coeff=None,pco=None):
                 cf = poly_coeff[ind*bsize:(ind+1)*bsize]
                 cfo = pco[ind*bsize:(ind+1)*bsize]
             conditions = (eq1(T_part[i], X_part[j], cf=cf, cfo=cfo),
-                          eq2(T_part[i], X_part[j]))
+                          eq2(T_part[i], X_part[j], cf=cf))
 
             for m, r, c, t in conditions:
                 m = shifted(m, ind)
@@ -278,4 +305,4 @@ def count_points(pprx,pprt,poly_coeff=None,pco=None):
 
     cnst_type = np.hstack(cnst_type)
 
-    return monos, rhs, cnst_type
+    return monos, rhs, cnst_type, cff

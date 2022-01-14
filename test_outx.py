@@ -12,7 +12,7 @@ def count(eps=0.01):
    
     outx = np.loadtxt("xdata.txt")
 
-    monos, rhs, ct = count_points(30,30,poly_coeff=None)
+    monos, rhs, ct = count_points(30,30,poly_coeff=outx)
 
     ct = np.hstack([ct,ct])
     
@@ -26,12 +26,15 @@ def count(eps=0.01):
 
     stime = time.time()
 
-    resd = abs(np.dot(task_A,outx) - task_rhs)
+    resd = np.dot(task_A,outx) - task_rhs
     
     idx = resd.argsort()
 
-    logging.info(f"worst residuals: {resd[idx[::-1]]}")
-    logging.info(f"worst residuals: {ct[idx[::-1]]}")
+    print(f"optimal objective: {outx[-1]}")
+    print("worst residuals:")
+    print(f"{resd[idx]}")
+    print(f"{ct[idx]}")
+    print(f"{len(resd[resd < -0.01])} / {len(resd)}")
 
 if __name__ == "__main__":
     import time
