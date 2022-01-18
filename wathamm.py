@@ -12,7 +12,7 @@ from scipy.sparse import coo_matrix
 from constants import *
 
 def test(pprx,pprt,outx):
-    monos, rhs, ct = count_points(pprx,pprt,poly_coeff=outx)
+    monos, rhs, ct,cff = count_points(pprx,pprt,pc=outx)
     ct = np.hstack([ct,ct])
 
     ones = np.ones((len(monos),1))
@@ -49,6 +49,7 @@ def count(params, eps=0.01):
     ltreg = T_part[0][-1] - T_part[0][0]
     bsize = sum(cff_cnt)
     outx_old = None
+    outxx = []
     f = open('v.txt','w')
     f.close()
     f = open('vu.txt','w')
@@ -62,30 +63,59 @@ def count(params, eps=0.01):
         stime = time.time()
         cff_old = None
         is_refin = True
-        outx_old = outx
-        while is_refin:
-            monos, rhs, ct, cff = count_points(pprx,pprt,
-                    poly_coeff=outx,pco=outx_old)
-            ct = np.hstack([ct,ct])
-        
-            ones = np.ones((len(monos),1))
+        pc_cff = outx
+        sdcf = None
+        refit = 0
+        monos, rhs, ct, cff = count_points(pprx,pprt,
+                pc=outx,pco=outx_old,pc_cff=pc_cff)
+        ones = np.ones((len(monos),1))
 
-            A1 = np.hstack([monos, ones])
-            A2 = np.hstack([-monos, ones])
-            task_A = np.vstack([A1,A2])
+        A1 = np.hstack([monos, ones])
+        A2 = np.hstack([-monos, ones])
+        task_A = np.vstack([A1,A2])
 
-            task_rhs = np.hstack([rhs,-rhs])
+        task_rhs = np.hstack([rhs,-rhs])
 
-            outx = simplex.solve(task_A, task_rhs, ct=ct, logLevel=1)
-            if cff_old is None:
-                cff_old = cff
-            else:
-                delta_cff = abs(cff - cff_old)
-                indr = np.argmax(delta_cff)
-                is_refin =  delta_cff[indr] > 0.01
-                logging.info(f"delta_cff[{indr}]: {delta_cff[indr]}")
-                logging.debug(f"{cff_old[indr]} | {cff[indr]}")
-                cff_old = cff
+        outx = simplex.solve(task_A, task_rhs, ct=ct, logLevel=1)
+#        logging.info("START REFIN")
+#        while is_refin:
+#            refit+=1
+#            if len(outxx)>=2:
+#                ppoutx = outxx[-2]
+#                poutx = outxx[-1]
+#            elif len(outxx)==1:
+#                ppoutx=None
+#                poutx = outxx[-1]
+#            else:
+#                ppoutx=None
+#                poutx=None
+#            monos, rhs, ct, cff = count_points(pprx,pprt,
+#                    pc=poutx,pco=ppoutx,pc_cff=pc_cff)
+#            ct = np.hstack([ct,ct])
+#            logging.info(f"{min(cff)},{max(cff)}")
+#            np.savetxt(f"ttt{refit}.dat",cff)
+#            ones = np.ones((len(monos),1))
+#
+#            A1 = np.hstack([monos, ones])
+#            A2 = np.hstack([-monos, ones])
+#            task_A = np.vstack([A1,A2])
+#
+#            task_rhs = np.hstack([rhs,-rhs])
+#
+#            pc_cff = simplex.solve(task_A, task_rhs, ct=ct, logLevel=1)
+#            np.savetxt(f"xdata_ref_{refit}.txt", pc_cff)
+#            if cff_old is None:
+#                cff_old = cff
+#            else:
+#                delta_cff = abs((cff - cff_old)/cff_old)
+#                np.savetxt("ddd.dat",delta_cff)
+#                indr = np.argmax(delta_cff)
+#                is_refin =  delta_cff[indr] > 0.01
+#                logging.info(f"delta_cff[{indr}]: {delta_cff[indr]}")
+#                logging.info(f"{cff_old[indr]} | {cff[indr]}")
+#                cff_old = cff
+#
+#        outx = pc_cff
         opt = test(pprx, pprt, outx)
 
         np.savetxt(f"xdata_{itcnt}.txt", outx)
@@ -135,6 +165,7 @@ def count(params, eps=0.01):
         logging.debug(f"max_p: {np.max(p)}")
         logging.debug(f"min_p: {np.min(p)}")
         v_old = v
+        outxx.append(outx)
         f = open('dv.txt','a')
         f.write(f"{opt}\n")
         f.close()
@@ -159,7 +190,8 @@ if __name__ == "__main__":
             'pprx'   : 6,
             'pprt'   : 6,
             }
-
+    logging.info("*"*40)
+    logging.info("START")
     stime = time.time()
     count(params)
     t = time.time() - stime

@@ -18,7 +18,7 @@ v0 = 1.0
 p0 = 10*10**6
 
 
-xreg,treg = 6,12
+xreg,treg = 10,20
 max_reg = xreg*treg
 max_poly_degree = 3
 
@@ -33,5 +33,5 @@ dt = total_time/treg
 index_info = 0
 cnt_var = 0
 
-epsilon = 0.001
-a = 0.3
+epsilon = 0.0002
+a = 1

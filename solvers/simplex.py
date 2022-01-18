@@ -33,17 +33,6 @@ def solve(A, rhs, ct=None, logLevel=0, extnd=False, basis=False, mps_file=None):
     logging.debug(f"nonzeros rhs: {np.count_nonzero(s.primalConstraintSolution[k])}")
     logging.debug(f"nonzeros dual: {np.count_nonzero(s.dualConstraintSolution[k2])}")
 
-    if ct is not None:
-        data = {
-            "type":ct,
-            "resd":s.primalConstraintSolution[k],
-            "dual":s.dualConstraintSolution[k2]
-        }
-
-        df = pd.DataFrame(data)
-        df.to_csv('out.csv', header = True, index = False)
-
-
     if extnd and not basis:
         return s.primalVariableSolution['x'],s.primalConstraintSolution[k],s.dualConstraintSolution[k2]
     elif not extnd and basis:
