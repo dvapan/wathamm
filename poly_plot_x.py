@@ -21,8 +21,8 @@ from model import make_id, psize
 
 filename = sys.argv[1]
 
-pprx = int(sys.argv[2])
-pprt = int(sys.argv[3])
+pprx = 7
+pprt = 7
 
 pc = np.loadtxt(filename)
 print("Polynom approximate with: {}".format(pc[-1]))
