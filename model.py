@@ -75,7 +75,7 @@ def eq1(*grid_base, cf=None, cfo=None, cf_cff=None):
 
     if cf_cff is None:
         rhs = np.full(len(monos), 0)
-        cff = np.full(len(monos), 0.2)
+        cff = np.full(len(monos), 5)
     else:
         rhs = np.full(len(monos), 0)
         lv = left.dot(cf_cff)
@@ -97,7 +97,7 @@ def eq2(*grid_base, cf=None, cf_cff=None):
     monos = left - right
     if cf_cff is None:
         rhs = np.full(len(monos), 0)
-        cff = np.full(len(monos), 200)
+        cff = np.full(len(monos), 5000)
     else:
         rhs = np.full(len(monos), 0)
         lv = left.dot(cf_cff)
@@ -287,7 +287,7 @@ def count_points(pprx,pprt,pc=None,pco=None,pc_cff=None):
             cf_cff = None
         else:
             cf_cff = pc_cff[ind*bsize:(ind+1)*bsize]
-        m,r,c,t = boundary_fnc(ps,20000, 0, T_part[0][0], X_part[j],cf_cff=None)
+        m,r,c,t = boundary_fnc(ps,6000, 0, T_part[0][0], X_part[j],cf_cff=None)
 #        m,r,c,t = boundary_val(p0,100000, 0, T_part[0][0], X_part[j])
 
         m = shifted(m, ind)
