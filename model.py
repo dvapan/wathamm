@@ -75,7 +75,7 @@ def eq1(*grid_base, cf=None, cfo=None, cf_cff=None):
 
     if cf_cff is None:
         rhs = np.full(len(monos), 0)
-        cff = np.full(len(monos), 5)
+        cff = np.full(len(monos), 10)
     else:
         rhs = np.full(len(monos), 0)
         lv = left.dot(cf_cff)
@@ -97,7 +97,7 @@ def eq2(*grid_base, cf=None, cf_cff=None):
     monos = left - right
     if cf_cff is None:
         rhs = np.full(len(monos), 0)
-        cff = np.full(len(monos), 5000)
+        cff = np.full(len(monos), 10000)
     else:
         rhs = np.full(len(monos), 0)
         lv = left.dot(cf_cff)
