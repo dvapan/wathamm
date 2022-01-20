@@ -6,13 +6,13 @@ import solvers.solve_constractions_cone as constr_cone
 import solvers.iterate_simplex as iterate_simplex
 
 from scipy.sparse import coo_matrix
-
+import sys
 
 def count(eps=0.01):
-   
-    outx = np.loadtxt("xdata.txt")
+    filename = sys.argv[1] 
+    outx = np.loadtxt(filename)
 
-    monos, rhs, ct = count_points(30,30,poly_coeff=outx)
+    monos, rhs, ct,cff = count_points(14,14,pc=outx)
 
     ct = np.hstack([ct,ct])
     

@@ -75,7 +75,7 @@ def eq1(*grid_base, cf=None, cfo=None, cf_cff=None):
 
     if cf_cff is None:
         rhs = np.full(len(monos), 0)
-        cff = np.full(len(monos), 10)
+        cff = np.full(len(monos), accs["eq1"])
     else:
         rhs = np.full(len(monos), 0)
         lv = left.dot(cf_cff)
@@ -97,7 +97,7 @@ def eq2(*grid_base, cf=None, cf_cff=None):
     monos = left - right
     if cf_cff is None:
         rhs = np.full(len(monos), 0)
-        cff = np.full(len(monos), 10000)
+        cff = np.full(len(monos), accs["eq2"])
     else:
         rhs = np.full(len(monos), 0)
         lv = left.dot(cf_cff)
@@ -274,7 +274,7 @@ def count_points(pprx,pprt,pc=None,pco=None,pc_cff=None):
             cf_cff = None
         else:
             cf_cff = pc_cff[ind*bsize:(ind+1)*bsize]
-        m,r,c,t = boundary_fnc(vs,0.1, 1, T_part[i],X_part[xreg - 1][-1],cf_cff=None)
+        m,r,c,t = boundary_fnc(vs,accs["v"], 1, T_part[i],X_part[xreg - 1][-1],cf_cff=None)
         m = shifted(m, ind)
         monos.append(m)
         rhs.append(r)
@@ -287,7 +287,7 @@ def count_points(pprx,pprt,pc=None,pco=None,pc_cff=None):
             cf_cff = None
         else:
             cf_cff = pc_cff[ind*bsize:(ind+1)*bsize]
-        m,r,c,t = boundary_fnc(ps,6000, 0, T_part[0][0], X_part[j],cf_cff=None)
+        m,r,c,t = boundary_fnc(ps,accs["p"], 0, T_part[0][0], X_part[j],cf_cff=None)
 #        m,r,c,t = boundary_val(p0,100000, 0, T_part[0][0], X_part[j])
 
         m = shifted(m, ind)
@@ -302,7 +302,7 @@ def count_points(pprx,pprt,pc=None,pco=None,pc_cff=None):
             cf_cff = None
         else:
             cf_cff = pc_cff[ind*bsize:(ind+1)*bsize]
-        m,r,c,t = boundary_val(p0,6000, 0, T_part[i], X_part[0][0],cf_cff=None)
+        m,r,c,t = boundary_val(p0,accs["p"], 0, T_part[i], X_part[0][0],cf_cff=None)
         m = shifted(m, ind)
         monos.append(m)
         rhs.append(r)
@@ -316,7 +316,7 @@ def count_points(pprx,pprt,pc=None,pco=None,pc_cff=None):
             cf_cff = None
         else:
             cf_cff = pc_cff[ind*bsize:(ind+1)*bsize]
-        m,r,c,t = boundary_val(v0,0.03, 1, T_part[0][0], X_part[j],cf_cff=None)
+        m,r,c,t = boundary_val(v0,accs["v"], 1, T_part[0][0], X_part[j],cf_cff=None)
         m = shifted(m, ind)
         monos.append(m)
         rhs.append(r)
@@ -330,11 +330,11 @@ def count_points(pprx,pprt,pc=None,pco=None,pc_cff=None):
         for j in range(xreg):
             if i < treg - 1 or j < xreg - 1:
                 #pressure connect blocks
-                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 0, 6000, X_part, T_part,pc_cff=None)
+                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 0, accs["p"], X_part, T_part,pc_cff=None)
                 t = [f"{q}-{j}x{i}" for q in t]
                 conditions.append((m,r,c,t))
                 #velocity connect blocks
-                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 1, 0.03, X_part, T_part,pc_cff=None)
+                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 1, accs["v"], X_part, T_part,pc_cff=None)
                 t = [f"{q}-{j}x{i}" for q in t]
                 conditions.append((m,r,c,t))
     for m, r, c, t in conditions:

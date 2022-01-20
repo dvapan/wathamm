@@ -35,8 +35,8 @@ def test(pprx,pprt,outx):
 def count(params, eps=0.01):
     itcnt = 0
     outx = None
-    pprx = 7
-    pprt = 7
+    pprx = 200
+    pprt = 400
     is_run = True
     v0 = None
     totalx = xreg*pprx - xreg + 1
@@ -68,6 +68,7 @@ def count(params, eps=0.01):
         refit = 0
         monos, rhs, ct, cff = count_points(pprx,pprt,
                 pc=outx,pco=outx_old,pc_cff=pc_cff)
+        print(monos.shape)
         ones = np.ones((len(monos),1))
 
         A1 = np.hstack([monos, ones])
@@ -76,6 +77,10 @@ def count(params, eps=0.01):
 
         task_rhs = np.hstack([rhs,-rhs])
 
+#        logging.info("start saving")
+#        np.savetxt("A.dat",task_A.flatten())
+#        np.savetxt("b.dat",task_rhs)
+#        logging.info("end saving")
         outx = simplex.solve(task_A, task_rhs, ct=ct, logLevel=1)
 #        logging.info("START REFIN")
 #        while is_refin:

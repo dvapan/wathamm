@@ -18,13 +18,13 @@ v0 = 1.0
 p0 = 10*10**6
 
 
-xreg,treg = 10,20
-max_reg = xreg*treg
-max_poly_degree = 3
-
-#xreg,treg = 1,1
+#xreg,treg = 10,20
 #max_reg = xreg*treg
-#max_poly_degree = 5
+#max_poly_degree = 3
+
+xreg,treg = 1,1
+max_reg = xreg*treg
+max_poly_degree = 5
 
 dx = length/xreg
 dt = total_time/treg
@@ -35,3 +35,10 @@ cnt_var = 0
 
 epsilon = 0.0002
 a = 1
+
+accs = {
+        "eq1":1000,
+        "eq2":1000000,
+        "p":20000,
+        "v":0.2,
+        }
