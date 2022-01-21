@@ -35,8 +35,8 @@ def test(pprx,pprt,outx):
 def count(params, eps=0.01):
     itcnt = 0
     outx = None
-    pprx = 200
-    pprt = 400
+    pprx = 7
+    pprt = 7
     is_run = True
     v0 = None
     totalx = xreg*pprx - xreg + 1

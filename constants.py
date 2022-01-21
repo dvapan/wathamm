@@ -18,13 +18,13 @@ v0 = 1.0
 p0 = 10*10**6
 
 
-#xreg,treg = 10,20
-#max_reg = xreg*treg
-#max_poly_degree = 3
-
-xreg,treg = 1,1
+xreg,treg = 10,20
 max_reg = xreg*treg
-max_poly_degree = 5
+max_poly_degree = 3
+
+#xreg,treg = 1,1
+#max_reg = xreg*treg
+#max_poly_degree = 5
 
 dx = length/xreg
 dt = total_time/treg
