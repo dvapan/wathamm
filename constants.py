@@ -18,7 +18,7 @@ v0 = 1.0
 p0 = 10*10**6
 
 
-xreg,treg = 10,20
+xreg,treg = 6,12
 max_reg = xreg*treg
 max_poly_degree = 3
 
@@ -34,11 +34,11 @@ index_info = 0
 cnt_var = 0
 
 epsilon = 0.0002
-a = 1
+a = 0.1
 
 accs = {
-        "eq1":1000,
-        "eq2":1000000,
-        "p":20000,
-        "v":0.2,
+        "eq1":10,
+        "eq2":10000,
+        "p":5000,
+        "v":0.05,
         }
