@@ -50,10 +50,6 @@ def count(params, eps=0.01):
     bsize = sum(cff_cnt)
     outx_old = None
     outxx = []
-    f = open('v.txt','w')
-    f.close()
-    f = open('vu.txt','w')
-    f.close()
     f = open('dv.txt','w')
     f.close()
     v_old = None
@@ -146,23 +142,27 @@ def count(params, eps=0.01):
             delta_v = abs(vu*a)
             ind = np.argmax(delta_v)
             logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
+            logging.info(f"delta_v avg: {np.average(delta_v)}")
             v0 = vu
         else:
             vu = (v-v0)*a+v0
             delta_v = abs(vu-v0)
             ind = np.argmax(delta_v)
             logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
+            logging.info(f"delta_v avg: {np.average(delta_v)}")
             v0 = vu
         if v_old is None:
             delta_v_c = abs(v)
             indr = np.argmax(delta_v_c)
             logging.info(f"delta_v_c[{indr}]: {delta_v_c[indr]}")
+            logging.info(f"delta_v_c avg: {np.average(delta_v_c)}")
             logging.debug(f"0 | {v[indr]}")
         else:
             delta_v_c = abs(v - v_old)
             indr = np.argmax(delta_v_c)
             is_run =  delta_v_c[indr] > 0.01
             logging.info(f"delta_v_c[{indr}]: {delta_v_c[indr]}")
+            logging.info(f"delta_v_c avg: {np.average(delta_v_c)}")
             logging.debug(f"{v_old[indr]} | {v[indr]}")
         logging.debug(f"max_v: {np.max(vu)} | {np.max(v)}")
         logging.debug(f"min_v: {np.min(vu)} | {np.min(v)}")
@@ -172,17 +172,11 @@ def count(params, eps=0.01):
         v_old = v
         outxx.append(outx)
         f = open('dv.txt','a')
-        f.write(f"{opt}\n")
-        f.close()
-        f = open('v.txt','a')
-        f.write(f"{v}\n")
-        f.close()
-        f = open('vu.txt','a')
-        f.write(f"{vu}\n")
+        f.write(f"{delta_v[indr]}\n")
         f.close()
         t = time.time() - stime
         logging.debug("iter time {} seconds".format(t) )
-    np.savetxt(f"xdata_{itcnt}.txt", outx)
+    np.savetxt(f"xdata.txt", outx)
 
 if __name__ == "__main__":
     import time
