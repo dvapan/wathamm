@@ -12,7 +12,7 @@ def count(eps=0.01):
     filename = sys.argv[1] 
     outx = np.loadtxt(filename)
 
-    monos, rhs, ct,cff = count_points(14,14,pc=outx)
+    monos, rhs, ct,cff = count_points(20,20,pc=None)
 
     ct = np.hstack([ct,ct])
     
@@ -26,7 +26,7 @@ def count(eps=0.01):
 
     stime = time.time()
 
-    resd = np.dot(task_A,outx) - task_rhs
+    resd = task_A.dot(outx) - task_rhs
     
     idx = resd.argsort()
 
