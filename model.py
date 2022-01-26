@@ -42,21 +42,11 @@ def eq1_left(pts):
     dpdx = mvmonoss(pts, ppwrs, 0, cff_cnt, [0, 1])
     return dpdx
 
-def eq1_right(pts, cf=None, cfo=None):
+def eq1_right(pts, v0):
     v = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 0])
     dvdt = mvmonoss(pts, ppwrs, 1, cff_cnt, [1, 0])
-    if cf is None:
+    if v0 is None:
         v0 = np.zeros_like(v)
-    elif cfo is None:
-        v0 = np.zeros_like(v)
-        v0[:,psize]=v.dot(cf)*a
-    else:
-        v0 = np.zeros_like(v)
-        v_0 = v.dot(cf)
-        v_0o = v.dot(cfo)
-        tst = (v_0 - v_0o)*a + v_0o
-        v0[:,psize] = tst
-
     return -rho*(dvdt + lmd*v0*np.abs(v0)/(2*d) + lmd*(v-v0)/d )
 
 def eq2_left(pts):
@@ -70,21 +60,11 @@ def eq2_right(pts):
 def eq1(*grid_base, cf=None, cfo=None, cf_cff=None):
     in_pts = nodes(*grid_base)
     left = eq1_left(in_pts)
-    right = eq1_right(in_pts,cf=cf,cfo=cfo)
+    right = eq1_right(in_pts,None)
     monos = left - right
 
-    if cf_cff is None:
-        rhs = np.full(len(monos), 0)
-        cff = np.full(len(monos), accs["eq1"])
-    else:
-        rhs = np.full(len(monos), 0)
-        lv = left.dot(cf_cff)
-        rv = right.dot(cf_cff)
-        lva = np.abs(lv)
-        rva = np.abs(rv)
-        svals = np.vstack([lva,rva])
-        cff = np.amax(svals,axis=0)
-        cff *= epsilon
+    rhs = np.full(len(monos), 0)
+    cff = np.full(len(monos), accs["eq1"])
 
     return monos, rhs, cff, ["eq1"]*len(monos)
 
@@ -95,18 +75,8 @@ def eq2(*grid_base, cf=None, cf_cff=None):
     left = eq2_left(in_pts)
     right = eq2_right(in_pts)
     monos = left - right
-    if cf_cff is None:
-        rhs = np.full(len(monos), 0)
-        cff = np.full(len(monos), accs["eq2"])
-    else:
-        rhs = np.full(len(monos), 0)
-        lv = left.dot(cf_cff)
-        rv = right.dot(cf_cff)
-        lva = np.abs(lv)
-        rva = np.abs(rv)
-        svals = np.vstack([lva,rva])
-        cff = np.amax(svals,axis=0)
-        cff *= epsilon
+    rhs = np.full(len(monos), 0)
+    cff = np.full(len(monos), accs["eq2"])
 
     return monos, rhs, cff, ["eq2"]*len(monos)
 
@@ -124,12 +94,7 @@ def boundary_val(val,eps, ind, *grid_base, name=None, cf_cff=None):
     sb_pts_x0 = nodes(*grid_base)
     monos = mvmonoss(sb_pts_x0, ppwrs, ind, cff_cnt)
     rhs = np.full(len(monos), val)
-    if cf_cff is None:
-        cff = np.full(len(monos), eps)
-    else:
-        svals = np.vstack([monos.dot(cf_cff),rhs])
-        cff = np.amax(abs(svals),axis=0)
-        cff *= epsilon
+    cff = np.full(len(monos), eps)
     return monos, rhs, cff, [make_cnst_name("bnd_val",name)]*len(monos)
 
 def boundary_fnc(fnc,eps, ind,  *grid_base, name=None,cf_cff=None):
@@ -139,13 +104,7 @@ def boundary_fnc(fnc,eps, ind,  *grid_base, name=None,cf_cff=None):
     sb_pts_x0 = nodes(*grid_base)
     monos = mvmonoss(sb_pts_x0, ppwrs, ind, cff_cnt)
     rhs = np.apply_along_axis(fnc, 1, sb_pts_x0)
-    if cf_cff is None:
-        cff = np.full(len(monos), eps)
-    else:
-        svals = np.vstack([monos.dot(cf_cff),rhs])
-        print(svals)
-        cff = np.amax(abs(svals),axis=0)
-        cff *= epsilon
+    cff = np.full(len(monos), eps)
     return monos, rhs, cff, [make_cnst_name("bnd_fnc",name)]*len(monos)
 
 
@@ -191,16 +150,7 @@ def betw_blocks(pws, gind,dind, pind, eps, X_part, T_part, name=None,pc_cff=None
         monos.append(valn - val)
     monos = np.vstack(monos)
     rhs = np.full(len(monos), 0)
-    if pc_cff is None:
-        cff = np.full(len(monos), eps)
-    else:
-        lv = np.vstack(lv)
-        rv = np.vstack(rv)
-        lvv = lv.dot(pc_cff[:-1])
-        rvv = rv.dot(pc_cff[:-1])
-        svals = np.vstack([lvv,rvv])
-        cff = np.amax(abs(svals),axis=0)
-        cff *= epsilon
+    cff = np.full(len(monos), eps)
     return monos, rhs, cff, [make_cnst_name("betw_blocks",name)]*len(monos)
 
 
