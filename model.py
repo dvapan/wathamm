@@ -149,12 +149,13 @@ def boundary_fnc(fnc,eps, ind,  *grid_base, name=None,cf_cff=None):
         cff = np.full(len(monos), eps)
     else:
         svals = np.vstack([monos.dot(cf_cff),rhs])
+        print(svals)
         cff = np.amax(abs(svals),axis=0)
         cff *= epsilon
     return monos, rhs, cff, [make_cnst_name("bnd_fnc",name)]*len(monos)
 
 
-def betw_blocks(gind,dind, pind, X_part, T_part, name=None):
+def betw_blocks(pws, gind,dind, pind, eps, X_part, T_part, name=None):
     i, j = gind
     di,dj = dind
     ind = make_id(i, j)
@@ -165,7 +166,7 @@ def betw_blocks(gind,dind, pind, X_part, T_part, name=None):
     if i < treg - 1:
         grid_base = T_part[i][-1], X_part[j]
         ptr_bnd = nodes(*grid_base)
-        val = mvmonoss(ptr_bnd, ppwrs, pind, cff_cnt)
+        val = mvmonoss(ptr_bnd, pws, pind, cff_cnt)
         val = shifted(val, ind)
         lv.append(val)
 
@@ -173,14 +174,14 @@ def betw_blocks(gind,dind, pind, X_part, T_part, name=None):
         indn = make_id(ni, nj)
         grid_basen = T_part[ni][0], X_part[nj]
         ptr_bndn = nodes(*grid_basen)
-        valn = mvmonoss(ptr_bndn, ppwrs, pind, cff_cnt)
+        valn = mvmonoss(ptr_bndn, pws, pind, cff_cnt)
         valn = shifted(valn, indn)
         rv.append(valn)
         monos.append(valn - val)
     if j < xreg - 1:
         grid_base = T_part[i], X_part[j][-1]
         ptr_bnd = nodes(*grid_base)
-        val = mvmonoss(ptr_bnd, ppwrs, pind, cff_cnt)
+        val = mvmonoss(ptr_bnd, pws, pind, cff_cnt)
         val = shifted(val, ind)
         lv.append(val)
 
@@ -189,15 +190,24 @@ def betw_blocks(gind,dind, pind, X_part, T_part, name=None):
         grid_basen = T_part[ni], X_part[nj][0]
 
         ptr_bndn = nodes(*grid_basen)
-        valn = mvmonoss(ptr_bndn, ppwrs, pind, cff_cnt)
+        valn = mvmonoss(ptr_bndn, pws, pind, cff_cnt)
         valn = shifted(valn, indn)
         rv.append(valn)
         
         monos.append(valn - val)
+    monos = np.vstack(monos)
     rhs = np.full(len(monos), 0)
-    lv = np.vstack(lv)
-    rv = np.vstack(rv)
-    return lv, rv, [make_cnst_name("betw_blocks",name)]*len(monos)
+    if pc_cff is None:
+        cff = np.full(len(monos), eps)
+    else:
+        lv = np.vstack(lv)
+        rv = np.vstack(rv)
+        lvv = lv.dot(pc_cff[:-1])
+        rvv = rv.dot(pc_cff[:-1])
+        svals = np.vstack([lvv,rvv])
+        cff = np.amax(abs(svals),axis=0)
+        cff *= epsilon
+    return monos, rhs, cff, [make_cnst_name("betw_blocks",name)]*len(monos)
 
 
 def shifted(cffs,shift):
@@ -244,18 +254,17 @@ def count_points(pprx,pprt,pc=None,pco=None,cff0=None):
             grid_base = T_part[i], X_part[j]
             in_pts = nodes(*grid_base)
             # equation 1
-            left_e1 = eq1_left(in_pts)
-            shlf_e1 = shifted(left_e1, ind)
-            right_e1 = eq1_right(in_pts)
-            shrf_e1 = shifted(right_e1, ind)
-            lblns.append(shlf_e1)
-            rblns.append(shrf_e1)
+            left = eq1_left(in_pts)
+            shlf = shifted(left, ind)
+            right = eq1_right(in_pts)
+            shrf = shifted(right, ind)
+            lblns.append(shlf)
+            rblns.append(shrf)
             rhs.append(np.zeros(len(in_pts)))
             if cff0 is None:
                 cff0 = np.full(len(in_pts), accs["eq1"])
             cff.append(cff0)
-            cnst_type.append(np.full(len(in_pts),f"eq1-{j}x{i}"))
-            cff0=None
+            cnst_type.append(np.full(len(in_pts),f"eq1-{j}x{i}")
 
             # equation 2
             left = eq2_left(in_pts)
@@ -268,8 +277,7 @@ def count_points(pprx,pprt,pc=None,pco=None,cff0=None):
             if cff0 is None:
                 cff0 = np.full(len(in_pts), accs["eq2"])
             cff.append(cff0)
-            cnst_type.append(np.full(len(in_pts),f"eq2-{j}x{i}"))
-            cff0=None
+            cnst_type.append(np.full(len(in_pts),f"eq2-{j}x{i}")
 
     for i in range(treg):
         ind = make_id(i, xreg - 1)
@@ -278,16 +286,15 @@ def count_points(pprx,pprt,pc=None,pco=None,cff0=None):
         left = mvmonoss(sb_pts_x0, ppwrs, 1, cff_cnt)
         shlf = shifted(left, ind)
         vals = np.apply_along_axis(vs, 1, sb_pts_x0)
-        right = mvvals(sb_pts_x0, 0, 1, cff_cnt)
+        right = mvvals(sb_pts_x0, vals, 1, cff_cnt)
         shrf = shifted(right, ind)
         lblns.append(shlf)
         rblns.append(shrf)
-        rhs.append(vals)
+        rhs.append(np.zeros(len(sb_pts_x0)))
         if cff0 is None:
             cff0 = np.full(len(sb_pts_x0), accs["v"])
         cff.append(cff0)
-        cff0=None
-        cnst_type.append(np.full(len(sb_pts_x0),f"bnd-{j}x{i}-vel-rght"))
+        cnst_type.append(np.full(len(sb_pts_x0),f"bnd-{j}x{i}-vel-rght")
 
     for j in range(xreg):
         ind = make_id(0, j)
@@ -296,16 +303,15 @@ def count_points(pprx,pprt,pc=None,pco=None,cff0=None):
         left = mvmonoss(sb_pts_x0, ppwrs, 0, cff_cnt)
         shlf = shifted(left, ind)
         vals = np.apply_along_axis(ps, 1, sb_pts_x0)
-        right = mvvals(sb_pts_x0, 0, 0, cff_cnt)
+        right = mvvals(sb_pts_x0, vals, 0, cff_cnt)
         shrf = shifted(right, ind)
         lblns.append(shlf)
         rblns.append(shrf)
-        rhs.append(vals)
+        rhs.append(np.zeros(len(sb_pts_x0)))
         if cff0 is None:
             cff0 = np.full(len(sb_pts_x0), accs["p"])
         cff.append(cff0)
-        cff0=None
-        cnst_type.append(np.full(len(sb_pts_x0),f"bnd-{j}x{i}-prs-start"))
+        cnst_type.append(np.full(len(sb_pts_x0),f"bnd-{j}x{i}-prs-start")
 
     for i in range(treg):
         ind = make_id(i, 0)
@@ -313,17 +319,15 @@ def count_points(pprx,pprt,pc=None,pco=None,cff0=None):
         sb_pts_x0 = nodes(*grid_base)
         left = mvmonoss(sb_pts_x0, ppwrs, 0, cff_cnt)
         shlf = shifted(left, ind)
-        vals = np.full(len(sb_pts_x0), p0)
-        right = mvvals(sb_pts_x0, 0, 0, cff_cnt)
+        right = mvvals(sb_pts_x0, p0, 0, cff_cnt)
         shrf = shifted(right, ind)
         lblns.append(shlf)
         rblns.append(shrf)
-        rhs.append(vals)
+        rhs.append(np.zeros(len(sb_pts_x0)))
         if cff0 is None:
             cff0 = np.full(len(sb_pts_x0), accs["p"])
         cff.append(cff0)
-        cff0=None
-        cnst_type.append(np.full(len(sb_pts_x0),f"bnd-{j}x{i}-prs-left"))
+        cnst_type.append(np.full(len(sb_pts_x0),f"bnd-{j}x{i}-prs-left")
 
 
     for j in range(xreg):
@@ -333,48 +337,40 @@ def count_points(pprx,pprt,pc=None,pco=None,cff0=None):
         left = mvmonoss(sb_pts_x0, ppwrs, 1, cff_cnt)
         shlf = shifted(left, ind)
         vals = np.full(len(sb_pts_x0), v0)
-        right = mvvals(sb_pts_x0, 0, 1, cff_cnt)
+        right = mvvals(sb_pts_x0, v0, 1, cff_cnt)
         shrf = shifted(right, ind)
         lblns.append(shlf)
         rblns.append(shrf)
-        rhs.append(vals)
+        rhs.append(np.zeros(len(sb_pts_x0)))
         if cff0 is None:
             cff0 = np.full(len(sb_pts_x0), accs["v"])
         cff.append(cff0)
-        cff0=None
-        cnst_type.append(np.full(len(sb_pts_x0),f"bnd-{j}x{i}-vel-left"))
+        cnst_type.append(np.full(len(sb_pts_x0),f"bnd-{j}x{i}-vel-left")
 
 
+    conditions = []
     for i in range(treg):
         for j in range(xreg):
             if i < treg - 1 or j < xreg - 1:
                 #pressure connect blocks
-                lv, rv, t = betw_blocks((i, j),(1,1), 0, X_part, T_part)
-                lblns.append(lv)
-                rblns.append(rv)
-                t = np.full(len(lv),f"bblck-{j}x{i}")
-                cnst_type.append(t)
-                rhs.append(np.zeros(len(lv)))
-                cff0 = np.full(len(lv), accs["p"])
-                cff.append(cff0)
+                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 0, accs["p"], X_part, T_part)
+                t = [f"{q}-{j}x{i}" for q in t]
+                conditions.append((m,r,c,t))
                 #velocity connect blocks
-                lv, rv, t = betw_blocks((i, j),(1,1), 1,X_part, T_part)
-                lblns.append(lv)
-                rblns.append(rv)
-                t = np.full(len(lv),f"bblck-{j}x{i}")
-                cnst_type.append(t)
-                rhs.append(np.zeros(len(lv)))
-                cff0 = np.full(len(lv), accs["p"])
-                cff.append(cff0)
+                m, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 1, accs["v"], X_part, T_part)
+                t = [f"{q}-{j}x{i}" for q in t]
+                conditions.append((m,r,c,t))
+    for m, r, c, t in conditions:
+        monos.append(m)
+        rhs.append(r)
+        cff.append(c)
+        cnst_type.append(t)
 
-    lblns = np.vstack(lblns)
-    rblns = np.vstack(rblns)
-
-    monos = lblns - rblns 
+    monos = np.vstack(monos)
     rhs = np.hstack(rhs)
     cff = np.hstack(cff)
-    monos /= cff.reshape(-1,1)
     rhs /= cff
+    monos /= cff.reshape(-1,1)
 
     cnst_type = np.hstack(cnst_type)
 

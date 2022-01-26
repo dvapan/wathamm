@@ -63,7 +63,8 @@ def count(params, eps=0.01):
         sdcf = None
         refit = 0
         monos, rhs, ct, cff = count_points(pprx,pprt,
-                pc=outx,pco=outx_old)
+                pc=outx,pco=outx_old,pc_cff=pc_cff)
+        print(monos.shape)
         ones = np.ones((len(monos),1))
 
         A1 = np.hstack([monos, ones])
@@ -73,7 +74,6 @@ def count(params, eps=0.01):
         task_rhs = np.hstack([rhs,-rhs])
 
 #        logging.info("start saving")
-#        is_run = False
 #        np.savetxt("A.dat",task_A.flatten())
 #        np.savetxt("b.dat",task_rhs)
 #        logging.info("end saving")
