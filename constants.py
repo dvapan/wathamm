@@ -33,8 +33,9 @@ dt = total_time/treg
 index_info = 0
 cnt_var = 0
 
-epsilon = 0.0002
-a = 0.1
+epsilon = 0.001
+a = 1
+a_cff = 0.3
 
 accs = {
         "eq1":10,

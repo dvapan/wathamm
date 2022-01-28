@@ -12,7 +12,7 @@ from scipy.sparse import coo_matrix
 from constants import *
 
 def test(pprx,pprt,outx):
-    monos, rhs, ct,cff = count_points(pprx,pprt,pc=outx)
+    monos, rhs, ct,cff, lvals,rvals = count_points(pprx,pprt,None)
     ct = np.hstack([ct,ct])
 
     ones = np.ones((len(monos),1))
@@ -53,18 +53,18 @@ def count(params, eps=0.01):
     f = open('dv.txt','w')
     f.close()
     v_old = None
+    cff = None
+    cff_old = None
+    is_refin = True
     while is_run  or itcnt == 0:
         itcnt += 1
         logging.info(f"ITER: {itcnt}")
         stime = time.time()
-        cff_old = None
-        is_refin = True
-        pc_cff = outx
         sdcf = None
         refit = 0
-        monos, rhs, ct, cff = count_points(pprx,pprt,
-                pc=outx,pco=outx_old,pc_cff=pc_cff)
-        print(monos.shape)
+        monos, rhs, ct,cff, lvals,rvals = count_points(pprx,pprt,cff)
+        if cff_old is None:
+            cff_old = np.copy(cff)
         ones = np.ones((len(monos),1))
 
         A1 = np.hstack([monos, ones])
@@ -73,11 +73,32 @@ def count(params, eps=0.01):
 
         task_rhs = np.hstack([rhs,-rhs])
 
-#        logging.info("start saving")
-#        np.savetxt("A.dat",task_A.flatten())
-#        np.savetxt("b.dat",task_rhs)
-#        logging.info("end saving")
         outx = simplex.solve(task_A, task_rhs, ct=ct, logLevel=1)
+        lcff = lvals.dot(outx[:-1])
+        rcff = rvals.dot(outx[:-1])
+        lrcff = np.abs(np.vstack([lcff, rcff]))
+        ncff = np.amax(lrcff,axis=0)*0.01
+        eq_num = len(ncff)
+        idx = ncff < cff[:eq_num]
+        cff[:eq_num][idx] = ncff[idx]
+        cff[cff<epsilon] = epsilon
+            
+        cff = (cff-cff_old)*a_cff+cff_old
+
+        delta_cff = abs(cff - cff_old)/cff_old
+        #delta_cff = abs((cff - cff_old)/cff_old)
+        indr = np.argmax(delta_cff)
+        is_run = delta_cff[indr] > 0.01
+        logging.info(f"delta_cff[{indr}]: {delta_cff[indr]}")
+        logging.info(f"{cff_old[indr]} | {cff[indr]} | {ct[indr]}")
+        idmin = np.argmin(cff)
+        idmax = np.argmax(cff)
+        logging.info(f"min cff[{idmin}]: {cff[idmin]} | {ct[idmin]}")
+        logging.info(f"cnt_min: {len(cff[cff == cff[idmin]])}")
+        logging.info(f"max_cff[{idmax}]: {cff[idmax]} | {ct[idmax]}")
+        logging.info(f"cnt_max: {len(cff[cff == cff[idmax]])}")
+        cff_old = np.copy(cff)
+
 #        logging.info("START REFIN")
 #        while is_refin:
 #            refit+=1
@@ -142,37 +163,23 @@ def count(params, eps=0.01):
             delta_v = abs(vu*a)
             ind = np.argmax(delta_v)
             logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
-            logging.info(f"delta_v avg: {np.average(delta_v)}")
+            #logging.info(f"delta_v avg: {np.average(delta_v)}")
             v0 = vu
         else:
             vu = (v-v0)*a+v0
             delta_v = abs(vu-v0)
             ind = np.argmax(delta_v)
             logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
-            logging.info(f"delta_v avg: {np.average(delta_v)}")
+            #logging.info(f"delta_v avg: {np.average(delta_v)}")
             v0 = vu
-        if v_old is None:
-            delta_v_c = abs(v)
-            indr = np.argmax(delta_v_c)
-            logging.info(f"delta_v_c[{indr}]: {delta_v_c[indr]}")
-            logging.info(f"delta_v_c avg: {np.average(delta_v_c)}")
-            logging.debug(f"0 | {v[indr]}")
-        else:
-            delta_v_c = abs(v - v_old)
-            indr = np.argmax(delta_v_c)
-            is_run =  delta_v_c[indr] > 0.01
-            logging.info(f"delta_v_c[{indr}]: {delta_v_c[indr]}")
-            logging.info(f"delta_v_c avg: {np.average(delta_v_c)}")
-            logging.debug(f"{v_old[indr]} | {v[indr]}")
-        logging.debug(f"max_v: {np.max(vu)} | {np.max(v)}")
-        logging.debug(f"min_v: {np.min(vu)} | {np.min(v)}")
-        logging.debug(f"v    : {vu[10]} | {v[10]}")
-        logging.debug(f"max_p: {np.max(p)}")
-        logging.debug(f"min_p: {np.min(p)}")
+#        logging.debug(f"max_v: {np.max(vu)} | {np.max(v)}")
+#        logging.debug(f"min_v: {np.min(vu)} | {np.min(v)}")
+#        logging.debug(f"v    : {vu[10]} | {v[10]}")
+#        logging.debug(f"max_p: {np.max(p)}")
+#        logging.debug(f"min_p: {np.min(p)}")
         v_old = v
-        outxx.append(outx)
         f = open('dv.txt','a')
-        f.write(f"{delta_v[indr]}\n")
+        f.write(f"{itcnt} {outx[-1]} {delta_cff[indr]} {delta_v[ind]}\n")
         f.close()
         t = time.time() - stime
         logging.debug("iter time {} seconds".format(t) )
