@@ -12,7 +12,7 @@ def count(eps=0.01):
     filename = sys.argv[1] 
     outx = np.loadtxt(filename)
 
-    monos, rhs, ct,cff = count_points(20,20,pc=None)
+    monos, rhs, ct,cff,_,_ = count_points(14,14,None)
 
     ct = np.hstack([ct,ct])
     
