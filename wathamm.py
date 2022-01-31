@@ -11,8 +11,8 @@ from scipy.sparse import coo_matrix
 
 from constants import *
 
-def test(pprx,pprt,outx):
-    monos, rhs, ct,cff, lvals,rvals = count_points(pprx,pprt,None)
+def test(params, outx,itcnt):
+    monos, rhs, ct,cff, lvals,rvals = count_points(params, None)
     ct = np.hstack([ct,ct])
 
     ones = np.ones((len(monos),1))
@@ -27,16 +27,23 @@ def test(pprx,pprt,outx):
     
     idx = resd.argsort()
 
-    logging.info(f"worst residuals: {resd[idx]}")
-    logging.info(f"worst residuals: {ct[idx]}")
+    sv_vals_ct("wrstresd", itcnt, resd[idx], ct[idx])
     return resd[idx][0], len(resd[resd < -0.01])
+
+def sv_vals_ct(tp,itcnt,val,ct):
+    f = open(f"{tp}/{itcnt}.dat",'w')
+    for e in zip(val,ct):
+        f.write("{} {}\n".format(*e))
+    f.close()
 
 
 def count(params, eps=0.01):
     itcnt = 0
     outx = None
-    pprx = 7
-    pprt = 7
+    pprx = params["pprx"]
+    pprt = params["pprt"]
+    xreg = params["xreg"]
+    treg = params["treg"]
     is_run = True
     v0 = None
     totalx = xreg*pprx - xreg + 1
@@ -62,7 +69,8 @@ def count(params, eps=0.01):
         stime = time.time()
         sdcf = None
         refit = 0
-        monos, rhs, ct,cff, lvals,rvals = count_points(pprx,pprt,cff)
+        monos, rhs, ct,cff, lvals,rvals = count_points(params,cff)
+        ct = np.hstack([ct,ct])
         if cff_old is None:
             cff_old = np.copy(cff)
         ones = np.ones((len(monos),1))
@@ -73,7 +81,11 @@ def count(params, eps=0.01):
 
         task_rhs = np.hstack([rhs,-rhs])
 
-        outx = simplex.solve(task_A, task_rhs, ct=ct, logLevel=1)
+        outx,rhs,duals = simplex.solve(task_A, task_rhs, ct=ct,extnd=True,logLevel=1)
+        id_dual = duals.argsort()
+        sv_vals_ct("duals", itcnt, duals[id_dual], ct[id_dual])
+        id_rhs = rhs.argsort()
+        sv_vals_ct("cnstrs", itcnt, rhs[id_rhs], ct[id_rhs])
         lcff = lvals.dot(outx[:-1])
         rcff = rvals.dot(outx[:-1])
         lrcff = np.abs(np.vstack([lcff, rcff]))
@@ -99,46 +111,7 @@ def count(params, eps=0.01):
         logging.info(f"cnt_max: {len(cff[cff == cff[idmax]])}")
         cff_old = np.copy(cff)
 
-#        logging.info("START REFIN")
-#        while is_refin:
-#            refit+=1
-#            if len(outxx)>=2:
-#                ppoutx = outxx[-2]
-#                poutx = outxx[-1]
-#            elif len(outxx)==1:
-#                ppoutx=None
-#                poutx = outxx[-1]
-#            else:
-#                ppoutx=None
-#                poutx=None
-#            monos, rhs, ct, cff = count_points(pprx,pprt,
-#                    pc=poutx,pco=ppoutx,pc_cff=pc_cff)
-#            ct = np.hstack([ct,ct])
-#            logging.info(f"{min(cff)},{max(cff)}")
-#            np.savetxt(f"ttt{refit}.dat",cff)
-#            ones = np.ones((len(monos),1))
-#
-#            A1 = np.hstack([monos, ones])
-#            A2 = np.hstack([-monos, ones])
-#            task_A = np.vstack([A1,A2])
-#
-#            task_rhs = np.hstack([rhs,-rhs])
-#
-#            pc_cff = simplex.solve(task_A, task_rhs, ct=ct, logLevel=1)
-#            np.savetxt(f"xdata_ref_{refit}.txt", pc_cff)
-#            if cff_old is None:
-#                cff_old = cff
-#            else:
-#                delta_cff = abs((cff - cff_old)/cff_old)
-#                np.savetxt("ddd.dat",delta_cff)
-#                indr = np.argmax(delta_cff)
-#                is_refin =  delta_cff[indr] > 0.01
-#                logging.info(f"delta_cff[{indr}]: {delta_cff[indr]}")
-#                logging.info(f"{cff_old[indr]} | {cff[indr]}")
-#                cff_old = cff
-#
-#        outx = pc_cff
-        opt = test(pprx, pprt, outx)
+        opt = test(params, outx, itcnt)
 
         np.savetxt(f"xdata_{itcnt}.txt", outx)
         
@@ -146,7 +119,7 @@ def count(params, eps=0.01):
         p_lst = []
         for i in range(treg):
             for j in range(xreg):
-                ind = make_id(i, j)
+                ind = make_id(i, j, params)
                 pts = nodes(T_part[i],X_part[j])
                 cf = outx[ind*bsize:(ind+1)*bsize]
                 tv = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 0])
@@ -186,6 +159,7 @@ def count(params, eps=0.01):
     np.savetxt(f"xdata.txt", outx)
 
 if __name__ == "__main__":
+    import sys
     import time
     logging.basicConfig(filename="wathamm.log", level=logging.DEBUG,
                         format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H-%M-%S')
@@ -193,9 +167,11 @@ if __name__ == "__main__":
             'xreg'   : 6,
             'treg'   : 12,
             'pol_deg': 3,
-            'pprx'   : 6,
-            'pprt'   : 6,
+            'pprx'   : 7,
+            'pprt'   : 7,
             }
+    params["xreg"] = int(sys.argv[1])
+    params["treg"] = int(sys.argv[2])
     logging.info("*"*40)
     logging.info("START")
     stime = time.time()

@@ -27,8 +27,8 @@ def nodes(*grid_base):
     return np.vstack(list(grid_flat)).T
 
 
-def make_id(i,j):
-    return i*xreg + j
+def make_id(i,j,p):
+    return i*p["xreg"] + j
 
 def shifted(cffs,shift):
     pcount = len(cffs)
@@ -108,10 +108,12 @@ def boundary_fnc(fnc,eps, ind,  *grid_base, name=None,cf_cff=None):
     return left, right, rhs, cff, [make_cnst_name("bnd_fnc",name)]*len(pts)
 
 
-def betw_blocks(pws, gind,dind, pind, eps, X_part, T_part):
+def betw_blocks(pws, gind,dind, pind, eps, X_part, T_part,params):
+    xreg = params["xreg"]
+    treg = params["treg"]
     i, j = gind
     di,dj = dind
-    ind = make_id(i, j)
+    ind = make_id(i, j, params)
     monos = []
     lv = []
     rv = []
@@ -120,31 +122,31 @@ def betw_blocks(pws, gind,dind, pind, eps, X_part, T_part):
         grid_base = T_part[i][-1], X_part[j]
         ptr_bnd = nodes(*grid_base)
         val = mvmonoss(ptr_bnd, pws, pind, cff_cnt)
-        val = shifted(val, ind)
+        val = shifted(val, ind, params)
         lv.append(val)
 
         ni, nj = i+di, j
-        indn = make_id(ni, nj)
+        indn = make_id(ni, nj, params)
         grid_basen = T_part[ni][0], X_part[nj]
         ptr_bndn = nodes(*grid_basen)
         valn = mvmonoss(ptr_bndn, pws, pind, cff_cnt)
-        valn = shifted(valn, indn)
+        valn = shifted(valn, indn, params)
         rv.append(valn)
         monos.append(valn - val)
     if j < xreg - 1:
         grid_base = T_part[i], X_part[j][-1]
         ptr_bnd = nodes(*grid_base)
         val = mvmonoss(ptr_bnd, pws, pind, cff_cnt)
-        val = shifted(val, ind)
+        val = shifted(val, ind, params)
         lv.append(val)
 
         ni, nj = i, j+dj
-        indn = make_id(ni, nj)
+        indn = make_id(ni, nj, params)
         grid_basen = T_part[ni], X_part[nj][0]
 
         ptr_bndn = nodes(*grid_basen)
         valn = mvmonoss(ptr_bndn, pws, pind, cff_cnt)
-        valn = shifted(valn, indn)
+        valn = shifted(valn, indn, params)
         rv.append(valn)
         
         monos.append(valn - val)
@@ -156,9 +158,10 @@ def betw_blocks(pws, gind,dind, pind, eps, X_part, T_part):
     return lv, rv, rhs, cff, ["betw_blocks"]*len(monos)
 
 
-def shifted(cffs,shift):
+def shifted(cffs,shift,p):
     pcount = len(cffs)
     psize = len(cffs[0])
+    max_reg = p["xreg"]*p["treg"]
     lzeros = np.zeros((pcount, psize * shift))
     rzeros = np.zeros((pcount, (max_reg - shift-1) * psize))
     cffs = np.hstack([lzeros,cffs,rzeros])
@@ -178,13 +181,17 @@ def ps(pts):
     return p0 - rho*v0*lmd/(2*d)*x
 
 
-def count_points(pprx,pprt, cff0=None):
+def count_points(params, cff0=None):
     lvals = []
     rvals = []
     monos = []
     rhs = []
     cff = []
     cnst_type = []
+    xreg = params["xreg"]
+    treg = params["treg"]
+    pprx = params["pprx"]
+    pprt = params["pprt"]
     totalx = xreg*pprx - xreg + 1
     totalt = treg*pprt - treg + 1
     X = np.linspace(0, length, totalx)
@@ -195,14 +202,14 @@ def count_points(pprx,pprt, cff0=None):
     refine_vals = True
     for i in range(treg):
         for j in range(xreg):
-            ind = make_id(i, j)
+            ind = make_id(i, j, params)
             dec_eq1 = eq1(T_part[i], X_part[j])
             dec_eq2 = eq2(T_part[i], X_part[j])
             conditions = (dec_eq1,dec_eq2)
 
             for lm,rm, r, c, t in conditions:
-                lm = shifted(lm, ind)
-                rm = shifted(rm, ind)
+                lm = shifted(lm, ind, params)
+                rm = shifted(rm, ind, params)
                 m = lm - rm
                 lvals.append(lm)
                 rvals.append(rm)
@@ -212,10 +219,10 @@ def count_points(pprx,pprt, cff0=None):
                 cnst_type.append([f"{q}-{j}x{i}" for q in t] )
 
     for i in range(treg):
-        ind = make_id(i, xreg-1)
+        ind = make_id(i, xreg-1, params)
         lm,rm,r,c,t = boundary_fnc(vs,accs["v"], 1, T_part[i],X_part[xreg - 1][-1])
-        lm = shifted(lm, ind)
-        rm = shifted(rm, ind)
+        lm = shifted(lm, ind, params)
+        rm = shifted(rm, ind, params)
         m = lm - rm
 #        lvals.append(lm)
 #        rvals.append(rm)
@@ -225,10 +232,10 @@ def count_points(pprx,pprt, cff0=None):
         cnst_type.append([f"{q}-{xreg - 1}x{i}-vel-on-bound" for q in t])
 
     for j in range(xreg):
-        ind = make_id(0, j)
+        ind = make_id(0, j, params)
         lm,rm,r,c,t = boundary_fnc(ps,accs["p"], 0, T_part[0][0], X_part[j])
-        lm = shifted(lm, ind)
-        rm = shifted(rm, ind)
+        lm = shifted(lm, ind, params)
+        rm = shifted(rm, ind, params)
         m = lm - rm
 #        lvals.append(lm)
 #        rvals.append(rm)
@@ -238,10 +245,10 @@ def count_points(pprx,pprt, cff0=None):
         cnst_type.append([f"{q}-{j}x{0}-pressure-start-time" for q in t])
 
     for i in range(treg):
-        ind = make_id(i, 0)
+        ind = make_id(i, 0, params)
         lm,rm,r,c,t = boundary_val(p0,accs["p"], 0, T_part[i], X_part[0][0])
-        lm = shifted(lm, ind)
-        rm = shifted(rm, ind)
+        lm = shifted(lm, ind, params)
+        rm = shifted(rm, ind, params)
         m = lm - rm
 #        lvals.append(lm)
 #        rvals.append(rm)
@@ -252,10 +259,10 @@ def count_points(pprx,pprt, cff0=None):
 
 
     for j in range(xreg):
-        ind = make_id(0, j)
+        ind = make_id(0, j, params)
         lm,rm,r,c,t = boundary_val(v0,accs["v"], 1, T_part[0][0], X_part[j])
-        lm = shifted(lm, ind)
-        rm = shifted(rm, ind)
+        lm = shifted(lm, ind, params)
+        rm = shifted(rm, ind, params)
         m = lm - rm
 #        lvals.append(lm)
 #        rvals.append(rm)
@@ -271,14 +278,16 @@ def count_points(pprx,pprt, cff0=None):
         for j in range(xreg):
             if i < treg - 1 or j < xreg - 1:
                 #pressure connect blocks
-                lm,rm, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 0, accs["p"], X_part, T_part)
+                lm,rm, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 0,
+                        accs["p"], X_part, T_part, params)
                 t = [f"{q}-{j}x{i}" for q in t]
                 m = lm - rm
 #                lvals.append(lm)
 #                rvals.append(rm)
                 conditions.append((m,r,c,t))
                 #velocity connect blocks
-                lm,rm, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 1, accs["v"], X_part, T_part)
+                lm,rm, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 1,
+                        accs["v"], X_part, T_part, params)
                 t = [f"{q}-{j}x{i}" for q in t]
                 m = lm - rm
 #                lvals.append(lm)
