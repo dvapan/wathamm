@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button, RadioButtons
@@ -19,9 +20,9 @@ from model import eq1_left, eq1_right
 from model import eq2_left, eq2_right
 from model import make_id, psize
 
-def get_pv(pc, in_pts):
+def get_pv(pc, in_pts,p):
     ids = in_pts // np.array([ltreg,lxreg])
-    pids = np.apply_along_axis(lambda x: int(make_id(*x)),1,ids)
+    pids = np.apply_along_axis(lambda x: int(make_id(*x,p)),1,ids)
     cf = pc[pids]
     p_cf,v_cf = np.hsplit(cf, 2)
     p = mvmonos(in_pts, ppwrs, [0, 0])
@@ -29,10 +30,20 @@ def get_pv(pc, in_pts):
     uv = np.sum(p*v_cf, axis=1)
     return up,uv
 
-filenames = sys.argv[1:]
 
-pprx = 7
-pprt = 7
+parser = argparse.ArgumentParser()
+parser.add_argument("filenames", nargs='*')
+parser.add_argument("--xreg", default=1,type=int)
+parser.add_argument("--treg", default=1,type=int)
+parser.add_argument("--pprx", default=7,type=int)
+parser.add_argument("--pprt", default=7,type=int)
+args = parser.parse_args(sys.argv[1:])
+p = vars(args)
+xreg = args.xreg
+treg = args.treg
+pprx = args.pprx
+pprt = args.pprt
+
 totalx = xreg*pprx - xreg + 1
 totalt = treg*pprt - treg + 1
 X = np.linspace(0, length, totalx)
@@ -43,7 +54,7 @@ lxreg = X_part[0][-1] - X_part[0][0]
 ltreg = T_part[0][-1] - T_part[0][0]
 
 pcs = []
-for filename in filenames:
+for filename in args.filenames:
     pc = np.loadtxt(filename)
     print("Polynom approximate with: {}".format(pc[-1]))
     pc = pc[:-1]
@@ -66,7 +77,7 @@ in_pts = np.vstack([tt.flatten(),xx.flatten()]).T
 lp = []
 lv = []
 for pc in pcs:
-    up,uv = get_pv(pc,in_pts)
+    up,uv = get_pv(pc,in_pts,p)
     l1, = axs[0].plot(T, up, lw=2)
     l2, = axs[1].plot(T, uv, lw=2)
     lp.append(l1)
@@ -86,7 +97,7 @@ def update(val):
     tt,xx = np.meshgrid(T,X)
     in_pts = np.vstack([tt.flatten(),xx.flatten()]).T
     for i,pc in enumerate(pcs):
-        up,uv = get_pv(pc,in_pts) 
+        up,uv = get_pv(pc,in_pts,p) 
         lp[i].set_ydata(up)
         lv[i].set_ydata(uv)
     fig.canvas.draw_idle()

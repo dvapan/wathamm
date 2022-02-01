@@ -159,19 +159,22 @@ def count(params, eps=0.01):
     np.savetxt(f"xdata.txt", outx)
 
 if __name__ == "__main__":
-    import sys
     import time
-    logging.basicConfig(filename="wathamm.log", level=logging.DEBUG,
-                        format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H-%M-%S')
-    params = {
-            'xreg'   : 6,
-            'treg'   : 12,
-            'pol_deg': 3,
-            'pprx'   : 7,
-            'pprt'   : 7,
-            }
-    params["xreg"] = int(sys.argv[1])
-    params["treg"] = int(sys.argv[2])
+    import argparse
+    import sys
+
+    logging.basicConfig(filename="wathamm.log",
+            level=logging.DEBUG,
+            format='%(asctime)s %(message)s', 
+            datefmt='%Y-%m-%d %H-%M-%S')
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--xreg", default=1,type=int)
+    parser.add_argument("--treg", default=1,type=int)
+    parser.add_argument("--pprx", default=7,type=int)
+    parser.add_argument("--pprt", default=7,type=int)
+    args = parser.parse_args(sys.argv[1:])
+    params = vars(args)
+
     logging.info("*"*40)
     logging.info("START")
     stime = time.time()
