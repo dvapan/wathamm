@@ -27,7 +27,6 @@ def test(params, outx,itcnt):
     
     idx = resd.argsort()
 
-    sv_vals_ct("wrstresd", itcnt, resd[idx], ct[idx])
     return resd[idx][0], len(resd[resd < -0.01])
 
 def sv_vals_ct(tp,itcnt,val,ct):
@@ -81,11 +80,7 @@ def count(params, eps=0.01):
 
         task_rhs = np.hstack([rhs,-rhs])
 
-        outx,rhs,duals = simplex.solve(task_A, task_rhs, ct=ct,extnd=True,logLevel=1)
-        id_dual = duals.argsort()
-        sv_vals_ct("duals", itcnt, duals[id_dual], ct[id_dual])
-        id_rhs = rhs.argsort()
-        sv_vals_ct("cnstrs", itcnt, rhs[id_rhs], ct[id_rhs])
+        outx = simplex.solve(task_A, task_rhs, ct=ct,logLevel=1)
         lcff = lvals.dot(outx[:-1])
         rcff = rvals.dot(outx[:-1])
         lrcff = np.abs(np.vstack([lcff, rcff]))
