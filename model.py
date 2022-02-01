@@ -1,7 +1,7 @@
 import numpy as np
+import scipy.sparse as sps
 
 from poly import mvmonos, powers
-
 from constants import *
 
 ppwrs = powers(max_poly_degree, 2)
@@ -30,53 +30,14 @@ def nodes(*grid_base):
 def make_id(i,j,p):
     return i*p["xreg"] + j
 
-def shifted(cffs,shift):
+def shifted(cffs,shift,p):
     pcount = len(cffs)
     psize = len(cffs[0])
+    max_reg = p["xreg"]*p["treg"]
     lzeros = np.zeros((pcount, psize * shift))
     rzeros = np.zeros((pcount, (max_reg - shift-1) * psize))
     cffs = np.hstack([lzeros,cffs,rzeros])
     return cffs
-
-def eq1_left(pts):
-    dpdx = mvmonoss(pts, ppwrs, 0, cff_cnt, [0, 1])
-    return dpdx
-
-def eq1_right(pts, v0):
-    v = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 0])
-    dvdt = mvmonoss(pts, ppwrs, 1, cff_cnt, [1, 0])
-    if v0 is None:
-        v0 = np.zeros_like(v)
-    return -rho*(dvdt + lmd*v0*np.abs(v0)/(2*d) + lmd*(v-v0)/d )
-
-def eq2_left(pts):
-    dpdt = mvmonoss(pts, ppwrs, 0, cff_cnt, [1, 0])
-    return dpdt
-
-def eq2_right(pts):
-    dvdx = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 1])
-    return -c2*rho*dvdx
-
-def eq1(*grid_base):
-    in_pts = nodes(*grid_base)
-    left = eq1_left(in_pts)
-    right = eq1_right(in_pts,None)
-
-    rhs = np.full(len(in_pts), 0)
-    cff = np.full(len(in_pts), accs["eq1"])
-
-    return left,right, rhs, cff, ["eq1"]*len(in_pts)
-
-
-def eq2(*grid_base):
-    in_pts = nodes(*grid_base)
-
-    left = eq2_left(in_pts)
-    right = eq2_right(in_pts)
-    rhs = np.full(len(in_pts), 0)
-    cff = np.full(len(in_pts), accs["eq2"])
-
-    return left,right, rhs, cff, ["eq2"]*len(in_pts)
 
 def make_cnst_name(first, second=None):
     cnst_name = first
@@ -158,14 +119,6 @@ def betw_blocks(pws, gind,dind, pind, eps, X_part, T_part,params):
     return lv, rv, rhs, cff, ["betw_blocks"]*len(monos)
 
 
-def shifted(cffs,shift,p):
-    pcount = len(cffs)
-    psize = len(cffs[0])
-    max_reg = p["xreg"]*p["treg"]
-    lzeros = np.zeros((pcount, psize * shift))
-    rzeros = np.zeros((pcount, (max_reg - shift-1) * psize))
-    cffs = np.hstack([lzeros,cffs,rzeros])
-    return cffs
 
 
 def vs(pts):
@@ -200,29 +153,76 @@ def count_points(params, cff0=None):
     T_part = list(mit.windowed(T,n=pprt,step=pprt - 1))
     bsize = sum(cff_cnt)
     refine_vals = True
+
+    v_old = None
+    dpdx = []
+    dpdt = []
+    v    = []
+    dvdx = []
+    dvdt = []
+    print('start prepare')
     for i in range(treg):
         for j in range(xreg):
             ind = make_id(i, j, params)
-            dec_eq1 = eq1(T_part[i], X_part[j])
-            dec_eq2 = eq2(T_part[i], X_part[j])
-            conditions = (dec_eq1,dec_eq2)
+            grid_base = T_part[i], X_part[j]
+            pts = nodes(*grid_base)
+            p1 = mvmonoss(pts, ppwrs, 0, cff_cnt, [0, 1]) 
+            dpdx.append(sps.csr_matrix(shifted(p1, ind, params)))
+            p2 = mvmonoss(pts, ppwrs, 0, cff_cnt, [1, 0])
+            dpdt.append(sps.csr_matrix(shifted(p2, ind, params)))
+            p3 = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 0]) 
+            v.append(sps.csr_matrix(shifted(p3, ind, params)))
+            p4 = mvmonoss(pts, ppwrs, 1, cff_cnt, [0, 1])
+            dvdx.append(sps.csr_matrix(shifted(p4, ind, params)))
+            p5 = mvmonoss(pts, ppwrs, 1, cff_cnt, [1, 0])
+            dvdt.append(sps.csr_matrix(shifted(p5, ind, params)))
+    print('end prepare')
 
-            for lm,rm, r, c, t in conditions:
-                lm = shifted(lm, ind, params)
-                rm = shifted(rm, ind, params)
-                m = lm - rm
-                lvals.append(lm)
-                rvals.append(rm)
-                monos.append(m)
-                rhs.append(r)
-                cff.append(c)
-                cnst_type.append([f"{q}-{j}x{i}" for q in t] )
+    dpdx = sps.vstack(dpdx)
+    dpdt = sps.vstack(dpdt)
+    v    = sps.vstack(v) 
+    dvdx = sps.vstack(dvdx)
+    dvdt = sps.vstack(dvdt)
+    if v_old is None:
+        v_old = np.zeros_like(v)
+    
+    num_points = dpdx.shape[0]#totalt*totalx
+
+    lm1 = dpdx
+    rm1 = -rho*(dvdt + lmd*v_old*np.abs(v_old)/(2*d) + lmd*(v-v_old)/d )
+    lm2 = dpdt
+    rm2 = -c2*rho*dvdx
+
+    m1 = lm1 - rm1
+    m2 = lm2 - rm2
+
+    r1 = np.full(num_points, 0)
+    cff1 = np.full(num_points, accs["eq1"])
+    ct1 =np.full(num_points,"eq1")
+
+    r2 = np.full(num_points, 0)
+    cff2 = np.full(num_points, accs["eq2"])
+    ct2 =np.full(num_points,"eq2")
+
+    lvals.append(lm1)
+    rvals.append(rm1)
+    monos.append(m1)
+    rhs.append(r1)
+    cff.append(cff1)
+    cnst_type.append([f"{q}-{j}x{i}" for q in ct1] )
+
+    lvals.append(lm2)
+    rvals.append(rm2)
+    monos.append(m2)
+    rhs.append(r2)
+    cff.append(cff2)
+    cnst_type.append([f"{q}-{j}x{i}" for q in ct2] )
 
     for i in range(treg):
         ind = make_id(i, xreg-1, params)
         lm,rm,r,c,t = boundary_fnc(vs,accs["v"], 1, T_part[i],X_part[xreg - 1][-1])
-        lm = shifted(lm, ind, params)
-        rm = shifted(rm, ind, params)
+        lm = sps.csr_matrix(shifted(lm, ind, params))
+        rm = sps.csr_matrix(shifted(rm, ind, params))
         m = lm - rm
 #        lvals.append(lm)
 #        rvals.append(rm)
@@ -234,8 +234,8 @@ def count_points(params, cff0=None):
     for j in range(xreg):
         ind = make_id(0, j, params)
         lm,rm,r,c,t = boundary_fnc(ps,accs["p"], 0, T_part[0][0], X_part[j])
-        lm = shifted(lm, ind, params)
-        rm = shifted(rm, ind, params)
+        lm = sps.csr_matrix(shifted(lm, ind, params))
+        rm = sps.csr_matrix(shifted(rm, ind, params))
         m = lm - rm
 #        lvals.append(lm)
 #        rvals.append(rm)
@@ -247,8 +247,8 @@ def count_points(params, cff0=None):
     for i in range(treg):
         ind = make_id(i, 0, params)
         lm,rm,r,c,t = boundary_val(p0,accs["p"], 0, T_part[i], X_part[0][0])
-        lm = shifted(lm, ind, params)
-        rm = shifted(rm, ind, params)
+        lm = sps.csr_matrix(shifted(lm, ind, params))
+        rm = sps.csr_matrix(shifted(rm, ind, params))
         m = lm - rm
 #        lvals.append(lm)
 #        rvals.append(rm)
@@ -261,8 +261,8 @@ def count_points(params, cff0=None):
     for j in range(xreg):
         ind = make_id(0, j, params)
         lm,rm,r,c,t = boundary_val(v0,accs["v"], 1, T_part[0][0], X_part[j])
-        lm = shifted(lm, ind, params)
-        rm = shifted(rm, ind, params)
+        lm = sps.csr_matrix(shifted(lm, ind, params))
+        rm = sps.csr_matrix(shifted(rm, ind, params))
         m = lm - rm
 #        lvals.append(lm)
 #        rvals.append(rm)
@@ -281,28 +281,28 @@ def count_points(params, cff0=None):
                 lm,rm, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 0,
                         accs["p"], X_part, T_part, params)
                 t = [f"{q}-{j}x{i}" for q in t]
-                m = lm - rm
+                m1 = sps.csr_matrix(lm - rm)
 #                lvals.append(lm)
 #                rvals.append(rm)
-                conditions.append((m,r,c,t))
+                conditions.append((m1,r,c,t))
                 #velocity connect blocks
                 lm,rm, r, c, t = betw_blocks(ppwrs, (i, j),(1,1), 1,
                         accs["v"], X_part, T_part, params)
                 t = [f"{q}-{j}x{i}" for q in t]
-                m = lm - rm
+                m2 = sps.csr_matrix(lm - rm)
 #                lvals.append(lm)
 #                rvals.append(rm)
-                conditions.append((m,r,c,t))
+                conditions.append((m2,r,c,t))
     for m, r, c, t in conditions:
         monos.append(m)
         rhs.append(r)
         cff.append(c)
         cnst_type.append(t)
 
-    lvals = np.vstack(lvals)
-    rvals = np.vstack(rvals)
+    lvals = sps.vstack(lvals)
+    rvals = sps.vstack(rvals)
 
-    monos = np.vstack(monos)
+    monos = sps.vstack(monos)
     rhs = np.hstack(rhs)
     if cff0 is None:
         cff = np.hstack(cff)

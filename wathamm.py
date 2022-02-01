@@ -106,7 +106,7 @@ def count(params, eps=0.01):
         logging.info(f"cnt_max: {len(cff[cff == cff[idmax]])}")
         cff_old = np.copy(cff)
 
-        opt = test(params, outx, itcnt)
+#        opt = test(params, outx, itcnt)
 
         np.savetxt(f"xdata_{itcnt}.txt", outx)
         
@@ -140,11 +140,11 @@ def count(params, eps=0.01):
             logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
             #logging.info(f"delta_v avg: {np.average(delta_v)}")
             v0 = vu
-#        logging.debug(f"max_v: {np.max(vu)} | {np.max(v)}")
-#        logging.debug(f"min_v: {np.min(vu)} | {np.min(v)}")
-#        logging.debug(f"v    : {vu[10]} | {v[10]}")
-#        logging.debug(f"max_p: {np.max(p)}")
-#        logging.debug(f"min_p: {np.min(p)}")
+        logging.debug(f"max_v: {np.max(vu)} | {np.max(v)}")
+        logging.debug(f"min_v: {np.min(vu)} | {np.min(v)}")
+        logging.debug(f"v    : {vu[10]} | {v[10]}")
+        logging.debug(f"max_p: {np.max(p)}")
+        logging.debug(f"min_p: {np.min(p)}")
         v_old = v
         f = open('dv.txt','a')
         f.write(f"{itcnt} {outx[-1]} {delta_cff[indr]} {delta_v[ind]}\n")
