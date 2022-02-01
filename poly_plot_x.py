@@ -16,13 +16,11 @@ import matplotlib.pyplot as plt
 
 from model import boundary_fnc
 
-from model import eq1_left, eq1_right
-from model import eq2_left, eq2_right
 from model import make_id, psize
 
-def get_pv(pc, in_pts,p):
+def get_pv(pc, in_pts,params):
     ids = in_pts // np.array([ltreg,lxreg])
-    pids = np.apply_along_axis(lambda x: int(make_id(*x,p)),1,ids)
+    pids = np.apply_along_axis(lambda x: int(make_id(*x,params)),1,ids)
     cf = pc[pids]
     p_cf,v_cf = np.hsplit(cf, 2)
     p = mvmonos(in_pts, ppwrs, [0, 0])
@@ -82,8 +80,8 @@ for pc in pcs:
     l2, = axs[1].plot(T, uv, lw=2)
     lp.append(l1)
     lv.append(l2)
-axs[0].axis([0, total_time, p0*0.8, p0*1.5])
-axs[1].axis([0, total_time, -2*v0, 2*v0])
+axs[0].axis([0, total_time, 0, p0*2.5])
+axs[1].axis([0, total_time, -1.5*v0, 1.5*v0])
 
 axcolor = 'lightgoldenrodyellow'
 axtime = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
