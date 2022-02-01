@@ -158,7 +158,7 @@ if __name__ == "__main__":
     import argparse
     import sys
 
-    logging.basicConfig(filename="wathamm.log",
+    logging.basicConfig(filename="cpm.log",
             level=logging.DEBUG,
             format='%(asctime)s %(message)s', 
             datefmt='%Y-%m-%d %H-%M-%S')
