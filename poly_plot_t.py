@@ -3,8 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button, RadioButtons
 
+
 import sys
 from poly import mvmonos, powers
+import pandas as pd
 from constants import *
 import matplotlib.pyplot as plt
 from model import make_id, psize
@@ -18,7 +20,6 @@ def get_pv(pc, in_pts,params):
     up = np.sum(p*p_cf, axis=1)
     uv = np.sum(p*v_cf, axis=1)
     return up,uv
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument("filenames", nargs='*')
@@ -55,8 +56,8 @@ psize = len(ppwrs)
 
 cff_cnt = [psize,psize]
 
-X = np.array([0])
-T = np.arange(0, total_time, 0.01)
+X = np.arange(0, length)
+T = np.array([0])
 
 fig, axs = plt.subplots(2)
 plt.subplots_adjust(left=0.1, bottom=0.25)
@@ -67,23 +68,25 @@ lp = []
 lv = []
 for pc in pcs:
     up,uv = get_pv(pc,in_pts,p)
-    l1, = axs[0].plot(T, up, lw=2)
-    l2, = axs[1].plot(T, uv, lw=2)
+    l1, = axs[0].plot(X, up, lw=2)
+    l2, = axs[1].plot(X, uv, lw=2)
     lp.append(l1)
     lv.append(l2)
-axs[0].axis([0, total_time, 0, p0*5])
-axs[1].axis([0, total_time, -3*v0, 3*v0])
-
+axs[0].axis([0, length, 0, p0*3])
+axs[1].axis([0, length, -1.5*v0, 1.5*v0])
 
 axcolor = 'lightgoldenrodyellow'
 axtime = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
 
-spos = Slider(axtime, 'position', 0, length-0.001, valinit=0)
+stime = Slider(axtime, 'Time', 0, total_time-0.001, valinit=0)
+
 
 def update(val):
-    x = spos.val
-    X = np.array([x])
+    t = stime.val
+    T = np.array([t])
 
+    tt,xx = np.meshgrid(T,X)
+    in_pts = np.vstack([tt.flatten(),xx.flatten()]).T
     tt,xx = np.meshgrid(T,X)
     in_pts = np.vstack([tt.flatten(),xx.flatten()]).T
     for i,pc in enumerate(pcs):
@@ -91,13 +94,13 @@ def update(val):
         lp[i].set_ydata(up)
         lv[i].set_ydata(uv)
     fig.canvas.draw_idle()
-spos.on_changed(update)
+stime.on_changed(update)
 
 resetax = plt.axes([0.8, 0.025, 0.1, 0.04])
 button = Button(resetax, 'Reset', color=axcolor, hovercolor='0.975')
 
 def reset(event):
-    spos.reset()
+    stime.reset()
 button.on_clicked(reset)
 
 plt.show()
