@@ -17,7 +17,6 @@ def mvmonoss(x, powers, shift_ind, cff_cnt, diff=None):
     rzeros = np.zeros((len(x), rzeros))
     return np.hstack([lzeros, monos, rzeros])
 
-
 def nodes(*grid_base):
     """
     Make list of nodes from given space of points
@@ -134,7 +133,7 @@ def ps(pts):
     return p0 - rho*v0*lmd/(2*d)*x
 
 
-def count_points(params, cff0=None):
+def count_points(params, v_0_=None, cff0=None, a=None, sqp0=None):
     lvals = []
     rvals = []
     monos = []
@@ -158,9 +157,11 @@ def count_points(params, cff0=None):
     dpdx = []
     dpdt = []
     v    = []
+    v_0  = []
     dvdx = []
     dvdt = []
     print('start prepare')
+    sh_v = 0
     for i in range(treg):
         for j in range(xreg):
             ind = make_id(i, j, params)
@@ -176,6 +177,13 @@ def count_points(params, cff0=None):
             dvdx.append(sps.csr_matrix(shifted(p4, ind, params)))
             p5 = mvmonoss(pts, ppwrs, 1, cff_cnt, [1, 0])
             dvdt.append(sps.csr_matrix(shifted(p5, ind, params)))
+            if v_0_ is None:
+                p = np.zeros_like(p3)                 
+            else:
+                p = np.zeros_like(p3) 
+                p[:,psize] = v_0_[sh_v:sh_v+len(pts)]
+            v_0.append(sps.csr_matrix(shifted(p, ind, params)))
+            sh_v += len(pts)
     print('end prepare')
 
     dpdx = sps.vstack(dpdx)
@@ -183,13 +191,16 @@ def count_points(params, cff0=None):
     v    = sps.vstack(v) 
     dvdx = sps.vstack(dvdx)
     dvdt = sps.vstack(dvdt)
-    if v_old is None:
-        v_old = np.zeros_like(v)
-    
+    v_0  = sps.vstack(v_0)
+
     num_points = dpdx.shape[0]#totalt*totalx
 
     lm1 = dpdx
-    rm1 = -rho*(dvdt + lmd*v_old*np.abs(v_old)/(2*d) + lmd*(v-v_old)/d )
+    sqp = lmd*v_0.multiply(np.abs(v_0))/(2*d) 
+    if sqp0 is not None:
+        sqp = (sqp - sqp0)*a + sqp0
+    lnp = lmd*(v-v_0)/d
+    rm1 = -rho*(dvdt + sqp + lnp)
     lm2 = dpdt
     rm2 = -c2*rho*dvdx
 
@@ -313,4 +324,4 @@ def count_points(params, cff0=None):
 
     cnst_type = np.hstack(cnst_type)
 
-    return monos, rhs, cnst_type, cff, lvals, rvals 
+    return monos, rhs, cnst_type, sqp

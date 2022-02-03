@@ -1,6 +1,6 @@
 import numpy as np
 import logging
-from model import count_points
+from model import count_points 
 from model import nodes,make_id
 from model import ppwrs,psize,cff_cnt,mvmonoss
 import solvers.simplex as simplex
@@ -12,7 +12,7 @@ from scipy.sparse import coo_matrix
 from constants import *
 
 def test(params, outx,itcnt):
-    monos, rhs, ct,cff, lvals,rvals = count_points(params, None)
+    monos, rhs, ct = count_points(params, None)
     ct = np.hstack([ct,ct])
 
     ones = np.ones((len(monos),1))
@@ -44,7 +44,6 @@ def count(params, eps=0.01):
     xreg = params["xreg"]
     treg = params["treg"]
     is_run = True
-    v0 = None
     totalx = xreg*pprx - xreg + 1
     totalt = treg*pprt - treg + 1
     X = np.linspace(0, length, totalx)
@@ -58,17 +57,20 @@ def count(params, eps=0.01):
     outxx = []
     f = open('dv.txt','w')
     f.close()
-    v_old = None
+    v_0 = None
     cff = None
+    v_old = None
     cff_old = None
     is_refin = True
+    a = a_0
+    sqp = None
     while is_run  or itcnt == 0:
         itcnt += 1
         logging.info(f"ITER: {itcnt}")
         stime = time.time()
         sdcf = None
         refit = 0
-        monos, rhs, ct,cff, lvals,rvals = count_points(params,cff)
+        monos, rhs, ct, sqp = count_points(params,v_0_=v_0,a=a,sqp0=sqp)
         ct = np.hstack([ct,ct])
         if cff_old is None:
             cff_old = np.copy(cff)
@@ -81,34 +83,10 @@ def count(params, eps=0.01):
         task_rhs = np.hstack([rhs,-rhs])
 
         outx = simplex.solve(task_A, task_rhs, ct=ct,logLevel=1)
-        lcff = lvals.dot(outx[:-1])
-        rcff = rvals.dot(outx[:-1])
-        lrcff = np.abs(np.vstack([lcff, rcff]))
-        ncff = np.amax(lrcff,axis=0)*0.01
-        eq_num = len(ncff)
-        idx = ncff < cff[:eq_num]
-        cff[:eq_num][idx] = ncff[idx]
-        cff[cff<epsilon] = epsilon
-            
-        cff = (cff-cff_old)*a_cff+cff_old
-
-        delta_cff = abs(cff - cff_old)/cff_old
-        #delta_cff = abs((cff - cff_old)/cff_old)
-        indr = np.argmax(delta_cff)
-        is_run = delta_cff[indr] > 0.01
-        logging.info(f"delta_cff[{indr}]: {delta_cff[indr]}")
-        logging.info(f"{cff_old[indr]} | {cff[indr]} | {ct[indr]}")
-        idmin = np.argmin(cff)
-        idmax = np.argmax(cff)
-        logging.info(f"min cff[{idmin}]: {cff[idmin]} | {ct[idmin]}")
-        logging.info(f"cnt_min: {len(cff[cff == cff[idmin]])}")
-        logging.info(f"max_cff[{idmax}]: {cff[idmax]} | {ct[idmax]}")
-        logging.info(f"cnt_max: {len(cff[cff == cff[idmax]])}")
-        cff_old = np.copy(cff)
 
 #        opt = test(params, outx, itcnt)
 
-        np.savetxt(f"xdata_{itcnt}.txt", outx)
+        np.savetxt(f"xdata_{itcnt}.dat", outx)
         
         v_lst = []
         p_lst = []
@@ -126,28 +104,45 @@ def count(params, eps=0.01):
         v = np.hstack(v_lst)
         p = np.hstack(p_lst)
         ind = 0
-        if v0 is None:
-            vu= v*a
-            delta_v = abs(vu*a)
+        if v_0 is None:
+            vu= v
+            delta_v = abs(vu)
             ind = np.argmax(delta_v)
-            logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
+            #logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
             #logging.info(f"delta_v avg: {np.average(delta_v)}")
-            v0 = vu
+            v_0 = vu
         else:
-            vu = (v-v0)*a+v0
+            #vu = (v-v_0)*a+v_0
+            vu = v
             delta_v = abs(vu-v0)
             ind = np.argmax(delta_v)
-            logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
+            is_run = delta_v[ind] > accs["v"]
+            #logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
             #logging.info(f"delta_v avg: {np.average(delta_v)}")
-            v0 = vu
+            v_0 = vu
+        logging.info(f"current a: {a}")
+        a /= 2
         logging.debug(f"max_v: {np.max(vu)} | {np.max(v)}")
         logging.debug(f"min_v: {np.min(vu)} | {np.min(v)}")
         logging.debug(f"v    : {vu[10]} | {v[10]}")
         logging.debug(f"max_p: {np.max(p)}")
         logging.debug(f"min_p: {np.min(p)}")
-        v_old = v
+        if v_old is None:
+            delta_v = abs(v)
+            ind = np.argmax(delta_v)
+            logging.info(f"base: delta_v[{ind}]: {delta_v[ind]}")
+            #logging.info(f"delta_v avg: {np.average(delta_v)}")
+            v_old = v
+        else:
+            delta_v = abs(v-v_old)
+            ind = np.argmax(delta_v)
+            is_run = delta_v[ind] > accs["v"]
+            logging.info(f"base: delta_v[{ind}]: {delta_v[ind]}")
+            #logging.info(f"delta_v avg: {np.average(delta_v)}")
+            v_old = v
+
         f = open('dv.txt','a')
-        f.write(f"{itcnt} {outx[-1]} {delta_cff[indr]} {delta_v[ind]}\n")
+        f.write(f"{itcnt} {outx[-1]} {delta_v[ind]}\n")
         f.close()
         t = time.time() - stime
         logging.debug("iter time {} seconds".format(t) )

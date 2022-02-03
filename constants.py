@@ -22,24 +22,16 @@ p0 = 10*10**5
 #max_reg = xreg*treg
 max_poly_degree = 3
 
-#xreg,treg = 1,1
-#max_reg = xreg*treg
-#max_poly_degree = 5
-
-#dx = length/xreg
-#dt = total_time/treg
-
-
 index_info = 0
 cnt_var = 0
 
 epsilon = 0.001
-a = 1
+a_0 = 1
 a_cff = 1
 
 accs = {
-        "eq1":1e+0,
-        "eq2":1e+4,
+        "eq1": 5,   #5,   #1e+1,
+        "eq2": 1500,#1500,#3e+3,
         "p":1e+4,
         "v":1e-2,
         }
