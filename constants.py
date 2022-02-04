@@ -1,8 +1,8 @@
 import numpy as np
 import more_itertools as mit
 
-length = 1400                     # Длина трубы          [м]
-total_time = 4                         # Время расчета      [с]
+length = 500 #1400                     # Длина трубы          [м]
+total_time = 1.5                         # Время расчета      [с]
 timeclose = 0.125                     # Время закрытия от общего времени
 d = 0.5
 delta = 0.2
@@ -15,7 +15,7 @@ lmd = 0.6  # 1*0.0558
 c2 = 1/(rho/K + (rho*d)/(delta*E))
 
 v0 = 1.0
-p0 = 10*10**5
+p0 = 30*10**5
 
 
 #xreg,treg = 10,20
@@ -26,7 +26,7 @@ index_info = 0
 cnt_var = 0
 
 epsilon = 0.001
-a_0 = 1
+a_0 = 0.1
 a_cff = 1
 
 accs = {
