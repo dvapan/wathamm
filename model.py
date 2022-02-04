@@ -133,7 +133,8 @@ def ps(pts):
     return p0 - rho*v0*lmd/(2*d)*x
 
 
-def count_points(params, v_0_=None, cff0=None, a=None, sqp0=None):
+def count_points(params, v_0_=None, cff0=None, a=None, sqp0=None,
+        lnp0=None):
     lvals = []
     rvals = []
     monos = []
@@ -196,10 +197,12 @@ def count_points(params, v_0_=None, cff0=None, a=None, sqp0=None):
     num_points = dpdx.shape[0]#totalt*totalx
 
     lm1 = dpdx
-    sqp = lmd*v_0.multiply(np.abs(v_0))/(2*d) 
+    sqp = lmd*v_0.multiply(np.abs(v_0))/(2*d)*a
     if sqp0 is not None:
         sqp = (sqp - sqp0)*a + sqp0
-    lnp = lmd*(v-v_0)/d
+    lnp = lmd*(v-v_0)/d*a
+    if lnp0 is not None:
+        lnp = (lnp - lnp0)*a + lnp0
     rm1 = -rho*(dvdt + sqp + lnp)
     lm2 = dpdt
     rm2 = -c2*rho*dvdx
@@ -324,4 +327,4 @@ def count_points(params, v_0_=None, cff0=None, a=None, sqp0=None):
 
     cnst_type = np.hstack(cnst_type)
 
-    return monos, rhs, cnst_type, sqp
+    return monos, rhs, cnst_type, sqp, lnp

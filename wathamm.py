@@ -62,15 +62,17 @@ def count(params, eps=0.01):
     v_old = None
     cff_old = None
     is_refin = True
-    a = a_0
+    a = 0 # a_0
     sqp = None
+    lnp = None
     while is_run  or itcnt == 0:
         itcnt += 1
         logging.info(f"ITER: {itcnt}")
         stime = time.time()
         sdcf = None
         refit = 0
-        monos, rhs, ct, sqp = count_points(params,v_0_=v_0,a=a,sqp0=sqp)
+        monos, rhs, ct, sqp, lnp = count_points(params, v_0_=v_0, a=a,
+                sqp0=sqp, lnp0=lnp)
         ct = np.hstack([ct,ct])
         if cff_old is None:
             cff_old = np.copy(cff)
@@ -112,38 +114,24 @@ def count(params, eps=0.01):
             #logging.info(f"delta_v avg: {np.average(delta_v)}")
             v_0 = vu
         else:
-            #vu = (v-v_0)*a+v_0
             vu = v
-            delta_v = abs(vu-v0)
+            delta_v = abs(vu-v_0)
             ind = np.argmax(delta_v)
             is_run = delta_v[ind] > accs["v"]
             #logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
             #logging.info(f"delta_v avg: {np.average(delta_v)}")
             v_0 = vu
         logging.info(f"current a: {a}")
-        a /= 2
-        logging.debug(f"max_v: {np.max(vu)} | {np.max(v)}")
-        logging.debug(f"min_v: {np.min(vu)} | {np.min(v)}")
-        logging.debug(f"v    : {vu[10]} | {v[10]}")
+        a = (1-a)/10 
+        logging.debug(f"max_v: {np.max(v_0)} | {np.max(v)}")
+        logging.debug(f"min_v: {np.min(v_0)} | {np.min(v)}")
         logging.debug(f"max_p: {np.max(p)}")
         logging.debug(f"min_p: {np.min(p)}")
-        if v_old is None:
-            delta_v = abs(v)
-            ind = np.argmax(delta_v)
-            logging.info(f"base: delta_v[{ind}]: {delta_v[ind]}")
-            #logging.info(f"delta_v avg: {np.average(delta_v)}")
-            v_old = v
-        else:
-            delta_v = abs(v-v_old)
-            ind = np.argmax(delta_v)
-            is_run = delta_v[ind] > accs["v"]
-            logging.info(f"base: delta_v[{ind}]: {delta_v[ind]}")
-            #logging.info(f"delta_v avg: {np.average(delta_v)}")
-            v_old = v
-
+        
         f = open('dv.txt','a')
         f.write(f"{itcnt} {outx[-1]} {delta_v[ind]}\n")
         f.close()
+
         t = time.time() - stime
         logging.debug("iter time {} seconds".format(t) )
     np.savetxt(f"xdata.txt", outx)
