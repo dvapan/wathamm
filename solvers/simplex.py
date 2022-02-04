@@ -30,8 +30,6 @@ def solve(A, rhs, ct=None, logLevel=0, extnd=False, basis=False, mps_file=None):
     k2 =list(s.dualConstraintSolution.keys())[0]
     q = s.dualConstraintSolution[k2]
     logging.debug(f"{s.getStatusString()} objective: {s.objectiveValue}")
-    logging.debug(f"nonzeros rhs: {np.count_nonzero(s.primalConstraintSolution[k])}")
-    logging.debug(f"nonzeros dual: {np.count_nonzero(s.dualConstraintSolution[k2])}")
 
     if extnd and not basis:
         return s.primalVariableSolution['x'],s.primalConstraintSolution[k],s.dualConstraintSolution[k2]
