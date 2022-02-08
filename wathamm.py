@@ -110,19 +110,19 @@ def count(params, eps=0.01):
             vu= v
             delta_v = abs(vu)
             ind = np.argmax(delta_v)
-            #logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
-            #logging.info(f"delta_v avg: {np.average(delta_v)}")
+            logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
+            logging.info(f"delta_v avg: {np.average(delta_v)}")
             v_0 = vu
         else:
             vu = v
             delta_v = abs(vu-v_0)
             ind = np.argmax(delta_v)
             is_run = delta_v[ind] > accs["v"]
-            #logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
-            #logging.info(f"delta_v avg: {np.average(delta_v)}")
+            logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
+            logging.info(f"delta_v avg: {np.average(delta_v)}")
             v_0 = vu
         logging.info(f"current a: {a}")
-        a = (1-a)/10 
+        a = a+ (1-a)/6 
         logging.debug(f"max_v: {np.max(v_0)} | {np.max(v)}")
         logging.debug(f"min_v: {np.min(v_0)} | {np.min(v)}")
         logging.debug(f"max_p: {np.max(p)}")
