@@ -41,6 +41,7 @@ def count(params, outx):
             p_lst.append(ttp)
     v = np.hstack(v_lst)
     p = np.hstack(p_lst)
+    print(v)
     monos, rhs, ct = count_points(params, v)
 
     ct = np.hstack([ct,ct])
@@ -87,6 +88,6 @@ if __name__ == "__main__":
 
     stime = time.time()
     outx = np.loadtxt(args.filename)
-    count(params, outx)
+    count(params, outx, a=1)
     t = time.time() - stime
     logging.debug("total time {} seconds".format(t) )
