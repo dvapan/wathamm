@@ -1,9 +1,9 @@
 import numpy as np
 import more_itertools as mit
 
-length = 500 #1400                     # Длина трубы          [м]
-total_time = 1.5                         # Время расчета      [с]
-timeclose = 0.125                     # Время закрытия от общего времени
+length = 1400                     # Длина трубы          [м]
+total_time = 4    #8                     # Время расчета      [с]
+timeclose = 0.125 #0.0625                     # Время закрытия от общего времени
 d = 0.5
 delta = 0.2
 rho = 1000
