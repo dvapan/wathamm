@@ -65,20 +65,22 @@ tt,xx = np.meshgrid(T,X)
 in_pts = np.vstack([tt.flatten(),xx.flatten()]).T
 lp = []
 lv = []
-for pc in pcs:
+pp = []
+pv = []
+for i,pc in enumerate(pcs):
     up,uv = get_pv(pc,in_pts,p)
     l1, = axs[0].plot(T, up, lw=2)
     l2, = axs[1].plot(T, uv, lw=2)
     lp.append(l1)
     lv.append(l2)
 axs[0].axis([0, total_time, 0, p0*2])
-axs[1].axis([0, total_time, -1.5*v0, 1.5*v0])
+axs[1].axis([0, total_time, -2*v0, 2*v0])
 
 
 axcolor = 'lightgoldenrodyellow'
 axtime = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
 
-spos = Slider(axtime, 'position', 0, length-0.001, valinit=0)
+spos = Slider(axtime, 'position', 0, length-0.0001, valinit=0)
 
 def update(val):
     x = spos.val
