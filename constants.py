@@ -26,7 +26,7 @@ index_info = 0
 cnt_var = 0
 
 epsilon = 0.001
-a_0 = 0.1
+a_0 = 0.3
 a_cff = 1
 
 accs = {

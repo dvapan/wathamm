@@ -73,8 +73,8 @@ for i,pc in enumerate(pcs):
     l2, = axs[1].plot(T, uv, lw=2)
     lp.append(l1)
     lv.append(l2)
-axs[0].axis([0, total_time, 0, p0*2])
-axs[1].axis([0, total_time, -2*v0, 2*v0])
+axs[0].axis([0, total_time, p0*0.5, p0*1.5])
+axs[1].axis([0, total_time, -1*v0, 1*v0])
 
 
 axcolor = 'lightgoldenrodyellow'

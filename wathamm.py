@@ -1,4 +1,3 @@
-import numpy as np
 import logging
 from model import count_points 
 from model import nodes,make_id
@@ -42,7 +41,7 @@ def count(params, eps=0.01):
     pprx = params["pprx"]
     pprt = params["pprt"]
     xreg = params["xreg"]
-    treg = params["treg"]
+    treg = params["treg"] 
     is_run = True
     totalx = xreg*pprx - xreg + 1
     totalt = treg*pprt - treg + 1
@@ -54,7 +53,7 @@ def count(params, eps=0.01):
     ltreg = T_part[0][-1] - T_part[0][0]
     bsize = sum(cff_cnt)
     outx_old = None
-    outxx = []
+    outx = None 
     f = open('dv.txt','w')
     f.close()
     v_0 = None
@@ -62,17 +61,19 @@ def count(params, eps=0.01):
     v_old = None
     cff_old = None
     is_refin = True
-    a = 0 # a_0
+    a = a_0
     sqp = None
     lnp = None
+    lnp2 = None
+    task_old = None
     while is_run  or itcnt == 0:
         itcnt += 1
         logging.info(f"ITER: {itcnt}")
         stime = time.time()
         sdcf = None
         refit = 0
-        monos, rhs, ct, sqp, lnp = count_points(params, v_0_=v_0, a=a,
-                sqp0=sqp, lnp0=lnp)
+        monos, rhs, ct, sqp, lnp, lnp2 = count_points(params, v_0=v_0, a=a,
+                sqp0=sqp, lnp0=lnp, lnp20=lnp2)
         ct = np.hstack([ct,ct])
         if cff_old is None:
             cff_old = np.copy(cff)
@@ -83,9 +84,10 @@ def count(params, eps=0.01):
         task_A = np.vstack([A1,A2])
 
         task_rhs = np.hstack([rhs,-rhs])
-
-        outx = simplex.solve(task_A, task_rhs, ct=ct,logLevel=1)
-
+        print(np.max(task_A),np.min(task_A))
+        outx = simplex.solve(task_A, task_rhs, ct=ct, 
+                logLevel=1,outx=outx)
+        
 #        opt = test(params, outx, itcnt)
 
         np.savetxt(f"xdata_{itcnt}.dat", outx)
@@ -107,6 +109,7 @@ def count(params, eps=0.01):
         p = np.hstack(p_lst)
         ind = 0
         if v_0 is None:
+            vu= v*a
             vu= v
             delta_v = abs(vu)
             ind = np.argmax(delta_v)
@@ -114,6 +117,7 @@ def count(params, eps=0.01):
             logging.info(f"delta_v avg: {np.average(delta_v)}")
             v_0 = vu
         else:
+            vu = (v-v0)*a+v
             vu = v
             delta_v = abs(vu-v_0)
             ind = np.argmax(delta_v)
@@ -122,7 +126,6 @@ def count(params, eps=0.01):
             logging.info(f"delta_v avg: {np.average(delta_v)}")
             v_0 = vu
         logging.info(f"current a: {a}")
-        a = a+ (1-a)/6 
         logging.debug(f"max_v: {np.max(v_0)} | {np.max(v)}")
         logging.debug(f"min_v: {np.min(v_0)} | {np.min(v)}")
         logging.debug(f"max_p: {np.max(p)}")
@@ -140,7 +143,7 @@ if __name__ == "__main__":
     import time
     import argparse
     import sys
-
+    np.set_printoptions(threshold=sys.maxsize)
     logging.basicConfig(filename="cpm.log",
             level=logging.DEBUG,
             format='%(asctime)s %(message)s', 
