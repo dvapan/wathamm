@@ -26,12 +26,19 @@ parser.add_argument("--xreg", default=1,type=int)
 parser.add_argument("--treg", default=1,type=int)
 parser.add_argument("--pprx", default=7,type=int)
 parser.add_argument("--pprt", default=7,type=int)
+parser.add_argument("--pscl", default=0.3,type=float)
+parser.add_argument("--vscl", default=1.1,type=float)
 args = parser.parse_args(sys.argv[1:])
 p = vars(args)
 xreg = args.xreg
 treg = args.treg
 pprx = args.pprx
 pprt = args.pprt
+pscl = args.pscl
+vscl = args.vscl
+
+psclm = 1-pscl
+psclp = 1+pscl
 
 totalx = xreg*pprx - xreg + 1
 totalt = treg*pprt - treg + 1
@@ -73,8 +80,8 @@ for i,pc in enumerate(pcs):
     l2, = axs[1].plot(T, uv, lw=2)
     lp.append(l1)
     lv.append(l2)
-axs[0].axis([0, total_time, p0*0.5, p0*1.5])
-axs[1].axis([0, total_time, -1*v0, 1*v0])
+axs[0].axis([0, total_time, p0*psclm, p0*psclp])
+axs[1].axis([0, total_time, -vscl*v0, vscl*v0])
 
 
 axcolor = 'lightgoldenrodyellow'
