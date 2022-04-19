@@ -85,6 +85,8 @@ def count(params, eps=0.01):
 
         task_rhs = np.hstack([rhs,-rhs])
         print(np.max(task_A),np.min(task_A))
+        print((f"TASK SIZE XCOUNT: {task_A.shape[1]} " 
+                      f"GXCOUNT: {task_A.shape[0]}"))
         outx = simplex.solve(task_A, task_rhs, ct=ct, 
                 logLevel=1,outx=outx)
         
@@ -110,16 +112,16 @@ def count(params, eps=0.01):
         ind = 0
         if v_0 is None:
             vu= v*a
-            vu= v
+            #vu= v
             delta_v = abs(vu)
             ind = np.argmax(delta_v)
             logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
             logging.info(f"delta_v avg: {np.average(delta_v)}")
             v_0 = vu
         else:
+            delta_v = abs(v-v_0)
             vu = (v-v0)*a+v
-            vu = v
-            delta_v = abs(vu-v_0)
+            #vu = v
             ind = np.argmax(delta_v)
             is_run = delta_v[ind] > accs["v"]
             logging.info(f"delta_v[{ind}]: {delta_v[ind]}")
